@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Map Tiles Downloader</title>
+	<meta charset="utf-8"/>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+	<!-- TODO replace jquery with react -->
+	<script src="jquery.min.js"></script>
+
+    <script src='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
+
+	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.min.js'></script>
+	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.js'></script>
+	<script src='mapbox-gl-draw-rectangle-mode.min.js'></script>
+	<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.css' type='text/css'/>
+
+	<script src='https://cdn.jsdelivr.net/npm/progressbar.js@1.1.0/dist/progressbar.min.js'></script>
+
+
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i" rel="stylesheet">
+	<script src="materialize/js/materialize.min.js"></script>
+	<link href='materialize/css/materialize.min.css' rel='stylesheet' type='text/css' />
+
+	<script src="main.js"></script>
+	<link href='fonts/fonts.css' rel='stylesheet' type='text/css' />
+	<link href='style.css' rel='stylesheet' type='text/css' />
+</head>
+<body>
+
+	<div id='max-height'>
+
+		<div id='map-view'></div>
+
+		<div id='main-title'>Map Tiles Downloader</div>
+
+	</div>
+
+	<div class='sidebar' id='main-sidebar'>
+
+		<div class='center-align resume-entry'>
+			<a class="waves-effect waves-light z-depth-0 btn-small blue-grey lighten-1" id='open-existing-button'>Resume / open existing folder</a>
+		</div>
+
+		<div class='step-number'>
+			1
+		</div>
+		<div class="step-title">
+			Search an Area
+		</div>
+
+		<form id='search-form' class='sidebar-section row'>
+			<div class="input-field col s12">
+				<input id="location-box" type="text" value="New York" />
+				<label for="location-box">Enter a location</label>
+			</div>
+		</form>
+
+
+		<div class='step-number'>
+			2
+		</div>
+		<div class="step-title">
+			Select a Region
+		</div>
+
+		<div class='center-align sidebar-section'>
+			<p>
+				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='rectangle-draw-button'>Draw a rectangle</a></p><p class='hints region-estimate' id='region-estimate'>
+			</p>
+		</div>
+
+		<div class='step-number'>
+			3
+		</div>
+		<div class="step-title">
+			Configure
+		</div>
+
+		<div class='sidebar-section'>
+			<div class="row">
+				<div class="input-field col s6">
+					<input id="zoom-from-box" type="text" value='15'/>
+					<label for="zoom-from-box" class="active">Zoom from:</label>
+				</div>
+				<div class="input-field col s6">
+					<input id="zoom-to-box" type="text" value='15'/>
+					<label for="zoom-to-box" class="active">Zoom to:</label>
+				</div>
+			</div>
+
+
+			<div class="row">
+				<div class="input-field col s10">
+					<input id="source-box" type="text" value='http://ecn.t0.tiles.virtualearth.net/tiles/a{quad}.jpeg?g=129&mkt=en&stl=H'>
+					<label for="source-box">Map Tile Source</label>
+				</div>
+				<div class="input-field col s2">
+					<a class='waves-effect waves-light btn-small blue-grey lighten-2 z-depth-0 dropdown-trigger' id='source-select' href='#' data-target='sources'>⯆</a>
+
+					<ul id='sources' class='dropdown-content source-list' data-input='#source-box'>
+					</ul>
+				</div>
+			</div>
+
+			<div class='center-align'>
+				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='grid-preview-button'>Preview Grid</a>
+			</div>
+
+		</div>
+
+		<div class='step-number'>
+			4
+		</div>
+		<div class="step-title">
+			<a href='javascript:void(0)' id='more-options-toggle'>More Options (+)</a>
+		</div>
+
+		<div style='display:none;' id='more-options' class='sidebar-section row'>
+
+			<div class="input-field col s12">
+				<select id="output-scale" type="text">
+					<option value="1">1x</option>
+					<option value="2">2x</option>
+				</select>
+				<label for="output-scale">Output scale</label>
+			</div>
+
+			<div class="input-field col s12">
+				<input id="output-directory-box" type="text" value="{timestamp}">
+				<label for="output-directory-box">Output directory</label>
+			</div>
+
+			<div class="input-field col s12">
+				<select id="output-type" type="text">
+					<option value="directory">Directory</option>
+					<option value="mbtiles">Mbtiles</option>
+					<option value="repo">Repo</option>
+				</select>
+				<label for="output-type">Output type</label>
+			</div>
+
+			<div class="input-field col s12">
+				<input id="output-file-box" type="text" value="{z}/{x}/{y}.png">
+				<label for="output-file-box">Output file</label>
+			</div>
+
+			<div class="input-field col s12">
+				<input id="parallel-threads-box" type="text" value="4">
+				<label for="parallel-threads-box">Parallel downloads</label>
+			</div>
+		</div>
+
+		<div class="sidebar-section" id="stitch-option">
+			<label>
+				<input type="checkbox" id="stitch-checkbox" />
+				<span>Stitch tiles into image after download</span>
+			</label>
+		</div>
+
+		<button class='waves-effect waves-light z-depth-0 btn-large cyan darken-2 bottom-button' id='download-button'>Download</button>
+
+	</div>
+
+	<div class='sidebar' id='download-sidebar' style="display: none;">
+
+		<div class='step-number'>
+			5
+		</div>
+		<div class="step-title" id="download-phase-title">
+			Downloading tiles
+		</div>
+		<div class="hints sidebar-section" id="download-phase-hint">
+			Please wait...
+		</div>
+
+		<div class="sidebar-section">
+			<div id='progress-radial' class=''>
+
+			</div>
+
+			<p id='progress-subtitle' class=''>
+
+			</p>
+
+			<p class='tile-strip '>
+			</p>
+
+		</div>
+
+		<textarea id='log-view' class="sidebar-section"></textarea>
+
+		<button class='waves-effect waves-light z-depth-0 btn-large red lighten-5 bottom-button' id='stop-button'>Stop</button>
+
+	</div>
+
+	<div class='sidebar' id='resume-sidebar' style="display: none;">
+
+		<div class='step-number'>
+			R
+		</div>
+		<div class="step-title">
+			Resume a download
+		</div>
+
+		<div class='sidebar-section'>
+			<div class='hints'>Folders in <span id='output-root'></span></div>
+			<div class='collection' id='dataset-list'></div>
+
+			<form id='open-path-form' class='row'>
+				<div class="input-field col s12">
+					<input id="open-path-box" type="text" placeholder="C:\maps\my-tiles">
+					<label for="open-path-box" class="active">Or type a folder / .mbtiles path</label>
+				</div>
+				<div class="col s12 right-align">
+					<button class='waves-effect waves-light btn-small blue-grey lighten-1 z-depth-0' type='submit' id='open-path-button'>Open</button>
+				</div>
+			</form>
+			<label>
+				<input type="checkbox" id="verify-checkbox" />
+				<span>Check tile files for truncation (slower)</span>
+			</label>
+		</div>
+
+		<div class='sidebar-section hints' id='dataset-loading' style='display:none;'>Scanning folder...</div>
+
+		<div class='sidebar-section' id='dataset-panel' style='display:none;'>
+			<div class='dataset-path' id='dataset-path'></div>
+			<div class='hints dataset-notes' id='dataset-notes'></div>
+
+			<div class="row">
+				<div class="input-field col s10">
+					<input id="resume-source-box" type="text" value=''>
+					<label for="resume-source-box" class="active">Map Tile Source</label>
+				</div>
+				<div class="input-field col s2">
+					<a class='waves-effect waves-light btn-small blue-grey lighten-2 z-depth-0 dropdown-trigger' id='resume-source-select' href='#' data-target='resume-sources'>⯆</a>
+					<ul id='resume-sources' class='dropdown-content source-list' data-input='#resume-source-box'>
+					</ul>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="input-field col s4">
+					<input id="resume-zoom-from-box" type="text" value='0'/>
+					<label for="resume-zoom-from-box" class="active">From zoom</label>
+				</div>
+				<div class="input-field col s4">
+					<input id="resume-zoom-to-box" type="text" value='0'/>
+					<label for="resume-zoom-to-box" class="active">To zoom</label>
+				</div>
+				<div class="input-field col s4">
+					<input id="resume-threads-box" type="text" value='4'/>
+					<label for="resume-threads-box" class="active">Parallel:</label>
+				</div>
+			</div>
+
+			<div class='hints'>Scale <span id='resume-scale'>1x</span>. The region is the rectangle on the map (<a href='javascript:void(0)' id='fit-region-button'>show it</a>): drag its corners or edges to resize it, or the centre dot to move it. The counts and coverage follow.</div>
+			<div class='hints region-bounds' id='region-bounds'></div>
+
+			<div class='missing-summary' id='missing-summary'></div>
+
+			<table class='zoom-table' id='zoom-table'>
+				<thead><tr><th>Zoom</th><th>Have</th><th>Missing</th><th>Total</th></tr></thead>
+				<tbody></tbody>
+			</table>
+
+			<div class='overlay-options'>
+				<label>
+					<input type="checkbox" id="show-coverage-checkbox" checked />
+					<span>Coverage (green have, red missing) at</span>
+				</label>
+				<select id='coverage-zoom' class='browser-default'></select>
+				<br/>
+				<label>
+					<input type="checkbox" id="show-imagery-checkbox" checked />
+					<span>Show downloaded tiles</span>
+				</label>
+			</div>
+
+			<div class='resume-actions'>
+				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='retry-failed-button' style='display:none;'>Retry failed</a>
+			</div>
+		</div>
+
+		<div class='resume-buttons'>
+			<button class='waves-effect waves-light z-depth-0 btn cyan darken-2' id='resume-button'>Resume</button>
+			<button class='waves-effect waves-light z-depth-0 btn red lighten-5 black-text' id='resume-close-button'>Close</button>
+		</div>
+
+	</div>
+
+</body>
+</html>
