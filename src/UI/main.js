@@ -873,6 +873,14 @@ $(function() {
 		});
 
 		$("#resume-zoom-from-box, #resume-zoom-to-box").on("change keyup", scheduleStats);
+		// the overlay shows the deepest zoom being downloaded unless picked by hand
+		$("#resume-zoom-to-box").on("change", function() {
+			var zooms = getResumeZooms();
+			if(zooms && $("#coverage-zoom option[value='" + zooms[1] + "']").length) {
+				$("#coverage-zoom").val(zooms[1]);
+				refreshCoverage();
+			}
+		});
 		$("#show-coverage-checkbox, #show-imagery-checkbox").change(function() {
 			refreshCoverage();
 		});

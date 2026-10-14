@@ -64,6 +64,51 @@ html, body {
 	letter-spacing: 2px;
 }
 
+/* one 44px row: the lockup's own right margin is blank, so the app name sits there */
+.brand-header {
+	display: flex;
+	align-items: center;
+	margin: -14px 0 4px -14px;
+	height: 44px;
+}
+
+.brand-lockup {
+	display: block;
+	width: 195px;
+	height: 44px;
+}
+
+.brand-app-name {
+	font-weight: 700;
+	font-size: 13px;
+	line-height: 15px;
+	color: #101A2C;
+	max-width: 96px;
+	margin-left: -14px;
+}
+
+#title-byline {
+	position: absolute;
+	top: 66px;
+	left: 32px;
+	z-index: 10000000000000000;
+	color: white;
+	font-size: 13px;
+	font-weight: 600;
+	text-shadow: 0px 2px 8px rgb(0, 0, 0);
+}
+
+#title-byline a {
+	color: white;
+	text-decoration: underline;
+}
+
+#title-byline .credit-line {
+	font-size: 11px;
+	font-weight: 400;
+	opacity: 0.9;
+}
+
 .step-number {
 	font-weight: 600;
 	font-size: 20px;
@@ -265,7 +310,7 @@ hr {
 }
 
 #log-view {
-	height: calc(100% - 480px);
+	height: calc(100% - 560px);
 	border: 1px solid #cfd8dc;
 	white-space: pre;
 	overflow-wrap: normal;

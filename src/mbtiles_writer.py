@@ -80,9 +80,9 @@ class MbtilesWriter:
 				("profile", profile),
 				("tilesize", str(tileSize)),
 				("scheme", "tms"),
-				("generator", "Map Tiles Downloader via AliFlux"),
+				("generator", "Arta Map Downloader (Arta Cyber Inc.)"),
 				("type", "overlay"),
-				("attribution", "Map Tiles Downloader via AliFlux"),
+				("attribution", "Arta Map Downloader (Arta Cyber Inc.)"),
 			])
 			connection.commit()
 

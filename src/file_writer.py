@@ -34,9 +34,9 @@ class FileWriter:
 			("profile", profile),
 			("tilesize", str(tileSize)),
 			("scheme", "xyz"),
-			("generator", "EliteMapper by Visor Dynamics"),
+			("generator", "Arta Map Downloader (Arta Cyber Inc.)"),
 			("type", "overlay"),
-			("attribution", "EliteMapper by Visor Dynamics"),
+			("attribution", "Arta Map Downloader (Arta Cyber Inc.)"),
 		]
 
 		Utils.writeFileAtomic(metadataPath, json.dumps(dict(data)).encode("utf-8"))

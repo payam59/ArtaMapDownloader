@@ -47,6 +47,22 @@ current_job_lock = threading.Lock()
 
 allowed_hosts = set()
 
+STATIC_TYPES = {
+	".htm": "text/html; charset=utf-8",
+	".html": "text/html; charset=utf-8",
+	".js": "application/javascript",
+	".css": "text/css",
+	".svg": "image/svg+xml",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".ico": "image/x-icon",
+	".json": "application/json",
+	".woff": "font/woff",
+	".woff2": "font/woff2",
+	".ttf": "font/ttf",
+	".eot": "application/vnd.ms-fontobject",
+}
+
 def makeEmptyPng():
 	# fully transparent 256px tile for "nothing here" (generated, so its pixels are known)
 	from PIL import Image
@@ -285,7 +301,7 @@ class serverHandler(BaseHTTPRequestHandler):
 
 			filePath = os.path.join(OUTPUT_DIR, outputDirectory, outputFile)
 
-			self.writerByType(outputType).addMetadata(lock, os.path.join(OUTPUT_DIR, outputDirectory), filePath, outputFile, "Map Tiles Downloader via AliFlux", "png", boundsArray, centerArray, minZoom, maxZoom, "mercator", 256 * outputScale)
+			self.writerByType(outputType).addMetadata(lock, os.path.join(OUTPUT_DIR, outputDirectory), filePath, outputFile, "Arta Map Downloader (Arta Cyber Inc.)", "png", boundsArray, centerArray, minZoom, maxZoom, "mercator", 256 * outputScale)
 
 			self.sendJson({"code": 200, "message": 'Metadata written'})
 			return
@@ -454,7 +470,7 @@ class serverHandler(BaseHTTPRequestHandler):
 
 			w, s, e, n = region.bounds
 			outputName = index.pattern if index.kind == "directory" else os.path.basename(index.path)
-			metadataArgs = (index.folder, index.path, outputName, "Map Tiles Downloader via AliFlux", "png", region.bounds, [(w + e) / 2, (s + n) / 2, maxZoom], minZoom, maxZoom, "mercator", 256 * outputScale)
+			metadataArgs = (index.folder, index.path, outputName, "Arta Map Downloader (Arta Cyber Inc.)", "png", region.bounds, [(w + e) / 2, (s + n) / 2, maxZoom], minZoom, maxZoom, "mercator", 256 * outputScale)
 
 			job = DownloadJob(index, source, region, minZoom, maxZoom, outputScale, threads, "failed" if mode == "failed" else "missing", metadataArgs)
 			current_job = job
@@ -536,7 +552,8 @@ class serverHandler(BaseHTTPRequestHandler):
 			self.sendBody(404, "text/plain", b"not found")
 			return
 
-		mime = mimetypes.MimeTypes().guess_type(file)[0] or "application/octet-stream"
+		# explicit types first: on Windows the registry can map .js/.svg to something a browser rejects
+		mime = STATIC_TYPES.get(os.path.splitext(file)[1].lower()) or mimetypes.MimeTypes().guess_type(file)[0] or "application/octet-stream"
 
 		with open(file, "rb") as f:
 			self.sendBody(200, mime, f.read())
@@ -548,12 +565,12 @@ class serverThreadedHandler(ThreadingHTTPServer):
 	allow_reuse_address = sys.platform != "win32"
 
 def run():
-	parser = argparse.ArgumentParser(description="Map Tiles Downloader")
+	parser = argparse.ArgumentParser(description="Arta Map Downloader by Arta Cyber Inc.")
 	parser.add_argument("--port", type=int, default=8080, help="port to listen on (default 8080)")
 	parser.add_argument("--host", default="127.0.0.1", help="address to bind (default 127.0.0.1; use 0.0.0.0 inside Docker)")
 	args = parser.parse_args()
 
-	print('Starting Server...')
+	print('Starting Arta Map Downloader (Arta Cyber Inc., https://www.artacyber.com)...')
 	os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 	if args.host in ("127.0.0.1", "localhost", "::1"):

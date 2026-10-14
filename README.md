@@ -1,12 +1,21 @@
-# ArtaMapDownloader
-
-**A super easy to use GUI for downloading map tiles, with resume.** Based on [Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader) by Ali Ashraf.
-
 <p align="center">
-  <img src="gif/map-tiles-downloader.gif">
+  <a href="https://www.artacyber.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="src/UI/brand/lockup-dark.svg">
+      <img src="src/UI/brand/lockup-light.svg" alt="Arta Cyber Inc." width="320">
+    </picture>
+  </a>
 </p>
 
-> **ArtaMapDownloader** is an enhanced fork of **[Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader)** by **[Ali Ashraf (AliFlux)](https://github.com/AliFlux)**, released under the MIT License. All credit for the original idea, UI and downloader goes to him. This fork adds resume, an editable download rectangle and fixes for the slowdown and memory growth on large downloads. See [What's new in this fork](#whats-new-in-this-fork) and [Credits](#credits).
+# Arta Map Downloader
+
+**A super easy to use GUI for downloading map tiles, with resume.** By [Arta Cyber Inc.](https://www.artacyber.com), based on [Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader) by Ali Ashraf.
+
+<p align="center">
+  <img src="gif/map-tiles-downloader.gif" alt="Arta Map Downloader demo (recorded with the original Map Tiles Downloader UI)">
+</p>
+
+> **Arta Map Downloader** is an enhanced fork of **[Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader)** by **[Ali Ashraf (AliFlux)](https://github.com/AliFlux)**, released under the MIT License. All credit for the original idea, UI and downloader goes to him. This fork adds resume, an editable download rectangle and fixes for the slowdown and memory growth on large downloads. See [What's new in this fork](#whats-new-in-this-fork) and [Credits](#credits).
 
 ## What's new in this fork
 
@@ -84,19 +93,18 @@ On Windows, `pyvips[binary]` bundles the required libvips DLLs automatically. On
 
 ## Via Docker
 
-Docker is a pretty simple way to install and contain applications. [Install Docker on your system](https://www.docker.com/products/docker-desktop), and paste this on your command line:
+Docker is a pretty simple way to install and contain applications. [Install Docker on your system](https://www.docker.com/products/docker-desktop), then build the image from the included `Dockerfile` and run it (no prebuilt image is published for Arta Map Downloader; the tag below is just a local name):
 
 ```sh
-docker run -v $PWD/output:/app/output/ -p 8080:8080 -it aliashraf/map-tiles-downloader
+docker build -t arta-map-downloader .
+docker run -v $PWD/output:/app/output/ -p 8080:8080 -it arta-map-downloader
 ```
 
 Now open the browser and head over to `http://localhost:8080`. The downloaded maps will be stored in the `output` directory.
 
-> The image above is the upstream project's. For this fork, build the image from the included `Dockerfile` (`docker build -t map-tiles-downloader .`) rather than pulling `aliashraf/map-tiles-downloader`, which does not contain the changes above.
-
 ## Purpose
 
-I design map related things as a hobby, and often I have to work with offline maps that require tiles to be stored on my local system. Downloading tiles is a bit of a headache, and the current solutions have user experience issues. So I built this tiny script in a couple of hours to speed up my work.
+In the original author's words: I design map related things as a hobby, and often I have to work with offline maps that require tiles to be stored on my local system. Downloading tiles is a bit of a headache, and the current solutions have user experience issues. So I built this tiny script in a couple of hours to speed up my work.
 
 ## Features
 
@@ -190,11 +198,11 @@ The output is a tiled, deflate-compressed TIFF compatible with GIS tools (QGIS, 
 
 ## Important Disclaimer
 
-Downloading map tiles is subject to the terms and conditions of the tile provider. Some providers such as Google Maps have restrictions in place to avoid abuse, therefore before downloading any tiles make sure you understand their TOCs. I recommend not using Google, Bing, and ESRI tiles in any commercial application without their consent.
+Downloading map tiles is subject to the terms and conditions of the tile provider. Some providers such as Google Maps have restrictions in place to avoid abuse, therefore before downloading any tiles make sure you understand their TOCs. We recommend not using Google, Bing, and ESRI tiles in any commercial application without their consent.
 
-## Stay In Touch
+## Arta Cyber Inc.
 
-For latest releases and announcements, check out my site: [aliashraf.net](http://aliashraf.net)
+Arta Map Downloader is maintained by Arta Cyber Inc. For releases, announcements and our other work, visit [www.artacyber.com](https://www.artacyber.com).
 
 ## License
 
@@ -202,4 +210,4 @@ This software is released under the [MIT License](LICENSE). Please read LICENSE 
 software availability and distribution.
 
 Copyright (c) 2020 [Ali Ashraf](http://aliashraf.net)
-Copyright (c) 2026 Arta Cyber Inc. (modifications in ArtaMapDownloader), under the same MIT License.
+Copyright (c) 2026 [Arta Cyber Inc.](https://www.artacyber.com) (modifications in Arta Map Downloader), under the same MIT License.
