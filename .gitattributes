@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# vendored libraries are kept byte-exact (their sha256 is in src/UI/vendor/README.txt)
+src/UI/vendor/** -text

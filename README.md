@@ -29,6 +29,7 @@
 - **`job.json` manifest** written with every download (source, region, zooms, scale, file pattern, failed tiles).
 - **Server-side downloads.** The download runs on the server and the browser only polls progress, so closing or reloading the page no longer matters.
 - **`--port` and `--host` options** (defaults: `8080`, `127.0.0.1`).
+- **Works offline.** The map libraries are bundled in `src/UI/vendor`, and a *Blank* base map shows your downloaded tiles, the coverage overlay and the rectangle with no internet connection at all.
 
 ### Performance and memory fixes
 
@@ -169,12 +170,20 @@ Every download writes a `job.json` manifest into its output folder (for MBTiles/
 1. Click **Open existing folder** at the top of the card
 2. Pick a folder from `src/output`, or type the absolute path of any tile folder or `.mbtiles` file and click **Open**
 3. The map shows the folder's downloaded tiles, plus a coverage overlay (green = have, red = missing) at the zoom picked under the table. The table lists have / missing / total per zoom
-4. Check the source URL and zooms. The region is the orange rectangle on the map: drag a corner or an edge to resize it, or the centre dot to move it. The table, the *Missing: N of M* figure and the coverage overlay follow as you drag, so you can grow the map and see the new area turn red. Then click **Resume**: only the missing tiles inside the rectangle are downloaded. If everything is already there it says *Nothing to resume*. `job.json` keeps the latest rectangle
+4. Check the source URL and zooms. The region is the bronze rectangle on the map: drag a corner or an edge to resize it, or the centre dot to move it. The table, the *Missing: N of M* figure and the coverage overlay follow as you drag, so you can grow the map and see the new area turn red. Then click **Resume**: only the missing tiles inside the rectangle are downloaded. If everything is already there it says *Nothing to resume*. `job.json` keeps the latest rectangle
 5. **Retry failed** downloads only the tiles recorded as failed in the manifest
 
 Folders without a `job.json` (made by older versions) still work: the region and zoom levels come from `metadata.json`, or are inferred from the tiles on disk, and you fill in the source URL. Empty (0-byte) tile files count as missing; tick *Check tile files for truncation* to also catch cut-off PNG/JPEG files (slower, it reads every file). Tiles are written under a temporary name and renamed, so a killed run cannot leave a half-written tile behind.
 
 Tile downloads time out after 20 seconds and are retried up to 3 times with backoff on network errors, 429 and 5xx responses; a `Retry-After` header from the tile server pauses the whole download for that long.
+
+## Working Offline
+
+The app needs no internet connection of its own: the map libraries (Mapbox GL JS v0.50.0 and Mapbox GL Draw v1.0.9) are bundled in `src/UI/vendor`, with their licences and checksums in `src/UI/vendor/README.txt`.
+
+- The *Street map* (OpenStreetMap) and *Satellite* (ESRI) base maps load their tiles from the internet. When those tiles cannot be loaded, a small notice says *Base map unavailable offline* and offers *Use blank map*.
+- The *Blank* base map is a plain light background that loads nothing from the internet. With it you can open a folder, see the downloaded tiles and the coverage overlay, edit the rectangle and resume a download from a local or network tile server. The app remembers the chosen base map in this browser.
+- The location search and the *Go to my location* button need the internet and, for location, the browser's permission. Location only works when the page is opened as `http://localhost`, `http://127.0.0.1` or over https; from another computer on the network (`--host 0.0.0.0`) the button explains this instead.
 
 ## Stitching Tiles into a Single Image
 
@@ -203,7 +212,7 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 Arta Map Downloader version 1.0.0, by Arta Cyber Inc. (*Help & about* in the app shows the same details).
 
-Privacy: the location search sends the text you type to [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/), only when you press Enter or the search button, and map tiles are loaded from the providers you choose. The app itself sends nothing to Arta Cyber Inc.
+Privacy: the location search sends the text you type to [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/), only when you press Enter or the search button, and map tiles are loaded from the providers you choose (none with the *Blank* base map). *Go to my location* uses the browser's own location service and the position stays in the page. The app itself sends nothing to Arta Cyber Inc.
 
 Arta Cyber Inc. is a small security and network engineering company in Ottawa. Cybersecurity is the main work, assessment, penetration testing and standards, across IT and OT alike; it also designs, maintains and supplies the networks it defends. Arta is Old Persian for truth and right order.
 

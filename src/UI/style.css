@@ -159,6 +159,92 @@ svg {
 	white-space: nowrap;
 }
 
+.toggle-btn .label-short {
+	display: none;
+}
+
+/* small, non-blocking notice under the base-map toggle (base tiles failed to load) */
+.map-notice {
+	position: absolute;
+	top: calc(var(--gap) + 56px);
+	left: var(--gap);
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px 10px;
+	max-width: min(460px, calc(100% - var(--panel-w) - var(--gap) * 4 - 44px));
+	box-sizing: border-box;
+	padding: 8px 8px 8px 12px;
+	background: #fff;
+	border-left: 3px solid var(--arta-bronze-ink);
+	border-radius: 8px;
+	box-shadow: 0 2px 10px rgba(16, 26, 44, 0.18);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.map-notice[hidden] {
+	display: none;
+}
+
+.map-notice-text {
+	flex: 1 1 200px;
+	min-width: 0;
+}
+
+.map-notice-action {
+	border: 1px solid var(--arta-blue);
+	background: #fff;
+	color: var(--arta-blue);
+	font: 600 13px var(--font);
+	padding: 4px 10px;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.map-notice-close {
+	border: 0;
+	background: transparent;
+	color: var(--arta-ink-3);
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	border-radius: 6px;
+}
+
+.map-notice-action:focus-visible, .map-notice-close:focus-visible {
+	outline: 2px solid var(--arta-blue);
+	outline-offset: 2px;
+}
+
+/* "you are here" dot from the locate button */
+.here-marker {
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: var(--arta-blue);
+	border: 3px solid #fff;
+	box-shadow: 0 0 0 6px rgba(43, 76, 140, 0.25), 0 1px 4px rgba(16, 26, 44, 0.4);
+}
+
+#locate-button.busy svg {
+	animation: locate-pulse 1s ease-in-out infinite;
+}
+
+@keyframes locate-pulse {
+	50% { opacity: 0.3; }
+}
+
+/* zoom-table counts from an older rectangle while the new count runs */
+#zoom-table tr.stale-row td {
+	opacity: 0.5;
+}
+
 /* mapbox scale bar sits above the coordinates readout */
 .mapboxgl-ctrl-bottom-left {
 	left: calc(var(--gap) - 10px);
@@ -1094,6 +1180,21 @@ svg {
 		font-size: 13px;
 	}
 
+	.toggle-btn .label-long {
+		display: none;
+	}
+
+	.toggle-btn .label-short {
+		display: inline;
+	}
+
+	/* below the scale bar, clear of the zoom-button column */
+	.map-notice {
+		top: 126px;
+		right: calc(var(--gap) * 2 + 44px);
+		max-width: none;
+	}
+
 	.coords-readout {
 		top: 66px;
 		bottom: auto;
@@ -1125,6 +1226,10 @@ svg {
 
 @media (max-width: 380px) {
 	.panel-header-link span {
+		display: none;
+	}
+
+	.toggle-btn svg {
 		display: none;
 	}
 }

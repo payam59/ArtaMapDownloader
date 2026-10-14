@@ -10,12 +10,13 @@
 
 	<script src="jquery.min.js"></script>
 
-	<script src='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
-	<link href='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
+	<!-- map libraries are bundled locally (vendor/README.txt) so the app works offline -->
+	<script src='vendor/mapbox/mapbox-gl.js'></script>
+	<link href='vendor/mapbox/mapbox-gl.css' rel='stylesheet' />
 
-	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.js'></script>
+	<script src='vendor/mapbox/mapbox-gl-draw.js'></script>
 	<script src='mapbox-gl-draw-rectangle-mode.min.js'></script>
-	<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.css' type='text/css'/>
+	<link rel='stylesheet' href='vendor/mapbox/mapbox-gl-draw.css' type='text/css'/>
 
 	<!-- Materialize is kept for the About / Contact modals and the toasts only -->
 	<script src="materialize/js/materialize.min.js"></script>
@@ -34,12 +35,22 @@
 		<div class='map-toggle' id='basemap-toggle' role='group' aria-label='Base map'>
 			<button type='button' class='toggle-btn active' data-base='street'>
 				<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14'/></svg>
-				<span>Street map</span>
+				<span class='label-long'>Street map</span><span class='label-short'>Street</span>
 			</button>
 			<button type='button' class='toggle-btn' data-base='satellite'>
 				<svg viewBox='0 0 24 24' aria-hidden='true'><path d='m12 3 9 5-9 5-9-5 9-5zM3 13l9 5 9-5'/></svg>
 				<span>Satellite</span>
 			</button>
+			<button type='button' class='toggle-btn' data-base='blank' title='Plain background with no internet needed: shows only your downloaded tiles, coverage and the rectangle'>
+				<svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='4' width='16' height='16' rx='2'/></svg>
+				<span>Blank</span>
+			</button>
+		</div>
+
+		<div class='map-notice' id='basemap-notice' role='status' hidden>
+			<span class='map-notice-text'>Base map unavailable offline. Your downloaded tiles can still be shown.</span>
+			<button type='button' class='map-notice-action' id='basemap-notice-blank'>Use blank map</button>
+			<button type='button' class='map-notice-close' id='basemap-notice-close' title='Dismiss' aria-label='Dismiss'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M6 6l12 12M18 6 6 18'/></svg></button>
 		</div>
 
 		<div class='map-buttons' id='map-buttons'>

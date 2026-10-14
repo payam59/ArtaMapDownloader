@@ -85,7 +85,27 @@ $(function() {
 
 	// ---------- map, base layers and map controls ----------
 
+	// base map choice: street (OSM), satellite (ESRI) or blank (no internet needed), remembered per browser
+	var BASE_KEY = "arta-map-downloader.basemap";
+	// neutral light ground for the blank base map (same as the page background in style.css)
+	var BLANK_COLOR = "#e9e7e1";
+	var currentBase = "street";
+	var baseNoticeDismissed = false;
+
+	function readSavedBase() {
+		try {
+			var saved = window.localStorage.getItem(BASE_KEY);
+			if(saved == "street" || saved == "satellite" || saved == "blank") {
+				return saved;
+			}
+		} catch(e) {
+		}
+		return "street";
+	}
+
 	function initializeMap() {
+
+		currentBase = readSavedBase();
 
 		map = new mapboxgl.Map({
 			container: 'map-view',
@@ -108,15 +128,21 @@ $(function() {
 						attribution: 'Imagery © Esri'
 					}
 				},
+				// only the visible base layer requests tiles, so the blank base map makes no external request
 				layers: [{
+					id: 'blank-background',
+					type: 'background',
+					paint: {'background-color': BLANK_COLOR}
+				}, {
 					id: 'osm-tiles',
 					type: 'raster',
-					source: 'osm'
+					source: 'osm',
+					layout: {visibility: currentBase == 'street' ? 'visible' : 'none'}
 				}, {
 					id: 'esri-tiles',
 					type: 'raster',
 					source: 'esri-imagery',
-					layout: {visibility: 'none'}
+					layout: {visibility: currentBase == 'satellite' ? 'visible' : 'none'}
 				}]
 			},
 			center: [-73.983652, 40.755024],
@@ -135,6 +161,23 @@ $(function() {
 			showCoords(map.getCenter());
 		});
 
+		// base tiles that fail to load (offline, provider down) show one small notice; anything else is logged as before
+		map.on('error', function(e) {
+			var baseSource = {'street': 'osm', 'satellite': 'esri-imagery'}[currentBase];
+			if(e && e.sourceId && (e.sourceId == 'osm' || e.sourceId == 'esri-imagery')) {
+				if(e.sourceId == baseSource) {
+					showBaseNotice();
+				}
+				return;
+			}
+			if(window.console) {
+				console.error(e && e.error ? e.error : e);
+			}
+		});
+
+		map.on('move', placeAreaPill);
+		$(window).on('resize', placeAreaPill);
+
 		map.on('mousemove', function(e) {
 			showCoords(e.lngLat);
 		});
@@ -150,6 +193,36 @@ $(function() {
 		});
 	}
 
+	function markBaseButton() {
+		$("#basemap-toggle .toggle-btn").each(function() {
+			var on = $(this).attr("data-base") == currentBase;
+			$(this).toggleClass("active", on).attr("aria-pressed", on ? "true" : "false");
+		});
+	}
+
+	function setBase(base) {
+		currentBase = base;
+		markBaseButton();
+		baseNoticeDismissed = false;
+		$("#basemap-notice").prop("hidden", true);
+		placeAreaPill();
+		// the style is loaded as an object, so layout changes work before the first render too
+		map.setLayoutProperty('osm-tiles', 'visibility', base == 'street' ? 'visible' : 'none');
+		map.setLayoutProperty('esri-tiles', 'visibility', base == 'satellite' ? 'visible' : 'none');
+		try {
+			window.localStorage.setItem(BASE_KEY, base);
+		} catch(e) {
+		}
+	}
+
+	function showBaseNotice() {
+		if(baseNoticeDismissed || currentBase == "blank") {
+			return;
+		}
+		$("#basemap-notice").prop("hidden", false);
+		placeAreaPill();
+	}
+
 	function showCoords(lngLat) {
 		var lat = lngLat.lat, lng = lngLat.lng;
 		$("#coords-readout").text(Math.abs(lat).toFixed(4) + "° " + (lat >= 0 ? "N" : "S") + ", " + Math.abs(lng).toFixed(4) + "° " + (lng >= 0 ? "E" : "W"));
@@ -158,29 +231,73 @@ $(function() {
 	function initializeMapControls() {
 
 		$("#basemap-toggle .toggle-btn").click(function() {
-			var satellite = $(this).attr("data-base") == "satellite";
-			$("#basemap-toggle .toggle-btn").removeClass("active").attr("aria-pressed", "false");
-			$(this).addClass("active").attr("aria-pressed", "true");
-			if(mapReady) {
-				map.setLayoutProperty('esri-tiles', 'visibility', satellite ? 'visible' : 'none');
-				map.setLayoutProperty('osm-tiles', 'visibility', satellite ? 'none' : 'visible');
-			}
+			setBase($(this).attr("data-base"));
+		});
+		markBaseButton();
+
+		$("#basemap-notice-blank").click(function() {
+			setBase("blank");
+		});
+		$("#basemap-notice-close").click(function() {
+			baseNoticeDismissed = true;
+			$("#basemap-notice").prop("hidden", true);
+			placeAreaPill();
 		});
 
 		$("#zoom-in-button").click(function() { map.zoomIn(); });
 		$("#zoom-out-button").click(function() { map.zoomOut(); });
 
-		$("#locate-button").click(function() {
-			if(!navigator.geolocation) {
-				toast("Your browser cannot share its location.");
-				return;
+		$("#locate-button").click(locateMe);
+	}
+
+	var hereMarker = null;
+	var locating = false;
+
+	function locateMe() {
+		// browsers only share location with https pages and http://localhost / 127.0.0.1
+		if(window.isSecureContext === false) {
+			toast("Location only works on a secure page. Open the app as http://localhost:" + (location.port || "8080") + " on this computer, or over https; it is not available at " + location.host + ".", 8000);
+			return;
+		}
+		if(!navigator.geolocation) {
+			toast("This browser cannot share its location.", 5000);
+			return;
+		}
+		if(locating) {
+			return;
+		}
+		locating = true;
+		$("#locate-button").addClass("busy").attr("aria-busy", "true");
+		navigator.geolocation.getCurrentPosition(function(position) {
+			locating = false;
+			$("#locate-button").removeClass("busy").removeAttr("aria-busy");
+			showHere(position.coords);
+		}, function(error) {
+			locating = false;
+			$("#locate-button").removeClass("busy").removeAttr("aria-busy");
+			var code = error ? error.code : 0;
+			if(code == 1) {
+				toast("Location permission was denied. Allow location for this page in the browser's site settings, then try again.", 7000);
+			} else if(code == 2) {
+				toast("Your location is not available right now (location services are off or there is no network).", 6000);
+			} else if(code == 3) {
+				toast("Finding your location took too long. Try again.", 5000);
+			} else {
+				toast("Your location could not be found.", 5000);
 			}
-			navigator.geolocation.getCurrentPosition(function(position) {
-				map.flyTo({center: [position.coords.longitude, position.coords.latitude], zoom: Math.max(map.getZoom(), 13)});
-			}, function() {
-				toast("Location is not available (permission denied or offline).");
-			}, {timeout: 10000});
-		});
+		}, {enableHighAccuracy: false, timeout: 10000, maximumAge: 0});
+	}
+
+	function showHere(coords) {
+		var lngLat = [coords.longitude, coords.latitude];
+		if(!hereMarker) {
+			var dot = $("<div class='here-marker' role='img' aria-label='You are here'></div>")[0];
+			hereMarker = new mapboxgl.Marker({element: dot}).setLngLat(lngLat).addTo(map);
+		} else {
+			hereMarker.setLngLat(lngLat);
+		}
+		$(hereMarker.getElement()).attr("title", "You are here" + (coords.accuracy ? " (within about " + Math.round(coords.accuracy).toLocaleString() + " m)" : ""));
+		map.flyTo({center: lngLat, zoom: Math.max(map.getZoom(), 13)});
 	}
 
 	// padding that keeps fitted areas clear of the card
@@ -618,6 +735,43 @@ $(function() {
 		}
 		$(areaMarker.getElement()).text(text);
 		areaMarker.setLngLat([(region[0] + region[2]) / 2, region[3]]);
+		placeAreaPill();
+	}
+
+	// the pill sits above the rectangle's top edge; when a map control covers that spot it moves
+	// just inside the edge, or below the control, so the floating toggle and notice never hide it
+	function placeAreaPill() {
+		if(!areaMarker || !region) {
+			return;
+		}
+		var pill = areaMarker.getElement();
+		var w = pill.offsetWidth, h = pill.offsetHeight;
+		var box = map.getContainer().getBoundingClientRect();
+		var p = map.project([(region[0] + region[2]) / 2, region[3]]);
+		var bottomY = map.project([(region[0] + region[2]) / 2, region[1]]).y;
+		var obstacles = $("#basemap-toggle, #basemap-notice:not([hidden]), #map-buttons, #coords-readout, .mapboxgl-ctrl-scale").map(function() {
+			var r = this.getBoundingClientRect();
+			return {left: r.left - box.left - 6, right: r.right - box.left + 6, top: r.top - box.top - 6, bottom: r.bottom - box.top + 6};
+		}).get();
+		function hit(top) {
+			var hits = obstacles.filter(function(o) {
+				return o.left < p.x + w / 2 && o.right > p.x - w / 2 && o.top < top + h && o.bottom > top;
+			});
+			return hits.length ? Math.max.apply(null, hits.map(function(o) { return o.bottom; })) : null;
+		}
+		var candidates = [p.y - 10 - h, p.y + 10];
+		var top = null;
+		for(var i = 0; i < candidates.length && top === null; i++) {
+			if(candidates[i] >= 0 && hit(candidates[i]) === null) {
+				top = candidates[i];
+			}
+		}
+		if(top === null) {
+			var below = hit(Math.max(candidates[1], 0));
+			top = below !== null && below + h < bottomY ? below : candidates[0];
+		}
+		// anchor is the pill's bottom centre at the top-edge point
+		areaMarker.setOffset([0, Math.round(top + h - p.y)]);
 	}
 
 	// area of a lat/lng rectangle on a sphere: R^2 * dLambda * (sin(phi2) - sin(phi1))
@@ -1184,6 +1338,8 @@ $(function() {
 			$("#resume-sidebar").hide().data("from-resume", false);
 			$("#main-sidebar").show();
 			clearCoverage();
+			openSeq++;
+			cancelStats();
 			dataset = null;
 			drawGrid();
 		});
@@ -1197,7 +1353,11 @@ $(function() {
 			openDataset({path: path});
 		});
 
-		$("#resume-zoom-from-box, #resume-zoom-to-box").on("change", scheduleStats);
+		$("#resume-zoom-from-box, #resume-zoom-to-box").on("change", function() {
+			// rows follow the boxes at once; the count itself is debounced
+			renderStatsTable();
+			scheduleStats();
+		});
 		// the overlay shows the deepest zoom being downloaded unless picked by hand
 		$("#resume-zoom-to-box").on("change", function() {
 			var zooms = getResumeZooms();
@@ -1259,14 +1419,24 @@ $(function() {
 		});
 	}
 
+	// only the folder opened last is shown, whatever order the answers arrive in
+	var openSeq = 0;
+
 	function openDataset(request) {
+		var seq = ++openSeq;
 		request.verify = $("#verify-checkbox").is(":checked");
 		$("#dataset-panel").hide();
 		$("#dataset-loading").show();
 		api("post", "/api/open", request).done(function(result) {
+			if(seq != openSeq) {
+				return;
+			}
 			$("#dataset-loading").hide();
 			showDataset(result);
 		}).fail(function(xhr) {
+			if(seq != openSeq) {
+				return;
+			}
 			$("#dataset-loading").hide();
 			toast(apiError(xhr, 'Could not open that folder.'), 6000);
 		});
@@ -1323,6 +1493,10 @@ $(function() {
 
 		setCoverageDataset(result.ds);
 		fitRegion();
+		// a count still running for the previous folder must never render under this one
+		cancelStats();
+		lastStats = null;
+		renderStatsTable();
 		requestStats();
 	}
 
@@ -1365,66 +1539,142 @@ $(function() {
 		return [Math.min(a, b), Math.max(a, b)];
 	}
 
-	// one request in flight at a time; edits made meanwhile are sent as one follow-up request
-	var statsInFlight = false;
+	// one request in flight at a time; edits made meanwhile are sent as one follow-up request.
+	// The table rows are always the current From..To zooms; counts come from the newest result for this
+	// folder (dimmed while it was counted for an older rectangle), and a stale response never renders.
+	var statsInFlight = null;
 	var statsQueued = false;
+	var statsSeq = 0;
+	var lastStats = null;
 	var lastStatsMs = null;
+
+	function statsParams() {
+		var zooms = getResumeZooms();
+		if(!dataset || zooms == null || !hasRegion()) {
+			return null;
+		}
+		return {ds: dataset.ds, bounds: getBoundsArray(), polygon: getPolygon(), minZoom: zooms[0], maxZoom: zooms[1]};
+	}
+
+	function regionKey(params) {
+		return JSON.stringify([params.bounds, params.polygon]);
+	}
+
+	function cancelStats() {
+		statsSeq++;
+		statsQueued = false;
+		if(statsInFlight) {
+			var xhr = statsInFlight;
+			statsInFlight = null;
+			xhr.abort();
+		}
+	}
 
 	function requestStats() {
 		if(!dataset) {
 			return;
 		}
-		var zooms = getResumeZooms();
-		if(zooms == null || !hasRegion()) {
-			$("#zoom-table tbody").html("");
-			$("#missing-summary").text(hasRegion() ? "Enter zoom levels" : "Draw a region to compare against");
+		var params = statsParams();
+		renderStatsTable();
+		if(params == null) {
 			return;
 		}
 		if(statsInFlight) {
 			statsQueued = true;
 			return;
 		}
-		statsInFlight = true;
 
+		var seq = ++statsSeq;
 		var sent = performance.now();
-		api("post", "/api/stats", {ds: dataset.ds, bounds: getBoundsArray(), polygon: getPolygon(), minZoom: zooms[0], maxZoom: zooms[1]}).always(function() {
-			statsInFlight = false;
+		var xhr = api("post", "/api/stats", params);
+		statsInFlight = xhr;
+		xhr.done(function(stats) {
+			if(seq != statsSeq || !dataset || dataset.ds != params.ds) {
+				return;
+			}
+			lastStatsMs = {server: stats.ms, roundTrip: Math.round(performance.now() - sent)};
+			var byZ = {};
+			for(var i = 0; i < stats.zooms.length; i++) {
+				byZ[stats.zooms[i].z] = stats.zooms[i];
+			}
+			lastStats = {ds: params.ds, region: regionKey(params), bounds: params.bounds, byZ: byZ};
+			var now = statsParams();
+			if(now && (now.minZoom != params.minZoom || now.maxZoom != params.maxZoom || regionKey(now) != regionKey(params))) {
+				statsQueued = true;
+			}
+			renderStatsTable();
+		}).fail(function(xhr, status) {
+			if(seq == statsSeq && status != "abort") {
+				toast(apiError(xhr, 'Could not count the tiles.'), 5000);
+			}
+		}).always(function() {
+			if(statsInFlight !== xhr) {
+				return;
+			}
+			statsInFlight = null;
 			if(statsQueued) {
 				statsQueued = false;
 				requestStats();
 			}
-		}).done(function(stats) {
-			lastStatsMs = {server: stats.ms, roundTrip: Math.round(performance.now() - sent)};
-			$("#region-bounds").text("Region " + getBoundsArray().map(function(v) { return v.toFixed(5); }).join(", "));
-			var body = $("#zoom-table tbody");
-			body.html("");
-			for(var i = 0; i < stats.zooms.length; i++) {
-				var row = stats.zooms[i];
-				var tr = $("<tr></tr>");
-				tr.append($("<td></td>").text(row.z));
+		});
+	}
+
+	// a pure function of the current zoom boxes, region and the newest result for this folder
+	function renderStatsTable() {
+		var body = $("#zoom-table tbody");
+		var params = statsParams();
+		body.html("");
+		if(!dataset) {
+			return;
+		}
+		if(params == null) {
+			$("#missing-summary").text(hasRegion() ? "Enter zoom levels" : "Draw a region to compare against");
+			$("#resume-button").prop("disabled", false).text("Resume");
+			return;
+		}
+		var known = lastStats && lastStats.ds == params.ds ? lastStats : null;
+		var current = known && known.region == regionKey(params);
+		var totals = {total: 0, present: 0, missing: 0};
+		var complete = true;
+		for(var z = params.minZoom; z <= params.maxZoom; z++) {
+			var row = known ? known.byZ[z] : null;
+			var tr = $("<tr></tr>").data("z", z);
+			tr.append($("<td></td>").text(z));
+			if(row) {
 				tr.append($("<td></td>").text(row.present.toLocaleString()));
 				tr.append($("<td class='missing-cell'></td>").text(row.missing.toLocaleString()));
 				tr.append($("<td></td>").text(row.total.toLocaleString()));
 				if(row.missing == 0) {
 					tr.addClass("complete-row");
 				}
-				tr.data("z", row.z);
-				tr.click(function() {
-					$("#coverage-zoom").val($(this).data("z"));
-					refreshCoverage();
-				});
-				body.append(tr);
-			}
-			var t = stats.totals;
-			if(t.missing == 0) {
-				$("#missing-summary").text("Complete: all " + t.total.toLocaleString() + " tiles are on disk. Nothing to do.");
+				totals.total += row.total;
+				totals.present += row.present;
+				totals.missing += row.missing;
 			} else {
-				$("#missing-summary").text("Missing: " + t.missing.toLocaleString() + " of " + t.total.toLocaleString() + " tiles");
+				complete = false;
+				tr.append($("<td></td>").text("…")).append($("<td class='missing-cell'></td>").text("…")).append($("<td></td>").text("…"));
 			}
-			$("#resume-button").prop("disabled", t.missing == 0).text(t.missing == 0 ? "Nothing to resume" : "Resume (" + t.missing.toLocaleString() + " tiles)");
-		}).fail(function(xhr) {
-			toast(apiError(xhr, 'Could not count the tiles.'), 5000);
-		});
+			tr.toggleClass("stale-row", !current);
+			tr.click(function() {
+				$("#coverage-zoom").val($(this).data("z"));
+				refreshCoverage();
+			});
+			body.append(tr);
+		}
+		if(current) {
+			$("#region-bounds").text("Region " + known.bounds.map(function(v) { return v.toFixed(5); }).join(", "));
+		}
+		if(!complete || !current) {
+			$("#missing-summary").text("Counting tiles...");
+			$("#resume-button").prop("disabled", false).text("Resume");
+			return;
+		}
+		if(totals.missing == 0) {
+			$("#missing-summary").text("Complete: all " + totals.total.toLocaleString() + " tiles are on disk. Nothing to do.");
+		} else {
+			$("#missing-summary").text("Missing: " + totals.missing.toLocaleString() + " of " + totals.total.toLocaleString() + " tiles");
+		}
+		$("#resume-button").prop("disabled", totals.missing == 0).text(totals.missing == 0 ? "Nothing to resume" : "Resume (" + totals.missing.toLocaleString() + " tiles)");
 	}
 
 	function resumeDataset(mode) {

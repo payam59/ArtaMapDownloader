@@ -566,6 +566,8 @@ class serverHandler(BaseHTTPRequestHandler):
 class serverThreadedHandler(ThreadingHTTPServer):
 	"""Handle requests in a separate thread."""
 	daemon_threads = True
+	# the map replaces 40+ overlay tiles at once; the default backlog of 5 refused some of them
+	request_queue_size = 64
 	# on Windows SO_REUSEADDR lets a second server silently share the port
 	allow_reuse_address = sys.platform != "win32"
 

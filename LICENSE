@@ -23,7 +23,7 @@ This applies to all additions, changes, branding, logos, user-interface text and
 
 Part 2. Original open-source components
 
-Arta Map Downloader includes code from the open-source project Map Tiles Downloader, which remains under the MIT License below. Part 1 does not reduce any rights granted by that licence for that original code. Third-party libraries bundled in src/UI (jQuery, Materialize, Mapbox and other libraries) keep their own licences.
+Arta Map Downloader includes code from the open-source project Map Tiles Downloader, which remains under the MIT License below. Part 1 does not reduce any rights granted by that licence for that original code. Third-party libraries bundled in src/UI (jQuery, Materialize, Mapbox and other libraries) keep their own licences; the Mapbox GL JS and Mapbox GL Draw files in src/UI/vendor have their licence texts in src/UI/vendor/LICENSES.
 
 MIT License
 
