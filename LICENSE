@@ -1,3 +1,30 @@
+ARTA MAP DOWNLOADER LICENSE
+Copyright (c) 2026 Arta Cyber Inc. All rights reserved except as granted below.
+
+Part 1. Arta Cyber Inc. work
+
+This applies to all additions, changes, branding, logos, user-interface text and documentation made by Arta Cyber Inc. in Arta Map Downloader (the "Software"), including resume, open-existing-folder and coverage overlay, the editable download rectangle, the performance and memory work, and the About and Contact pages.
+
+1. Free personal use. Arta Cyber Inc. grants you a free, non-exclusive, non-transferable, revocable licence to download, run and modify the Software for your own personal, non-commercial use.
+
+2. Not permitted without prior written permission from Arta Cyber Inc.:
+   a. selling, reselling, sublicensing, renting, leasing or charging for the Software or any copy, or including it in a paid product or service, or offering it as a hosted or paid service;
+   b. rebranding: removing or changing the Arta Map Downloader name, the Arta Cyber Inc. name, logos, About and Contact pages, or presenting the Software or a modified version as your own or under another name;
+   c. commercial or business use, including use inside a for-profit organisation or for client work;
+   d. redistributing the Software or modified versions to others (a link to the official repository is fine).
+
+3. Trademarks. "Arta Cyber", "Arta Map Downloader" and the Arta logos are property of Arta Cyber Inc. No trademark licence is granted.
+
+4. Commercial licensing and permissions: info@artacyber.com, https://www.artacyber.com
+
+5. No warranty. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND; Arta Cyber Inc. is not liable for any claim or damages arising from its use. You are responsible for complying with the terms of the tile providers you download from.
+
+6. Termination. Rights granted here end automatically if you breach these terms.
+
+Part 2. Original open-source components
+
+Arta Map Downloader includes code from the open-source project Map Tiles Downloader, which remains under the MIT License below. Part 1 does not reduce any rights granted by that licence for that original code. Third-party libraries bundled in src/UI (jQuery, Materialize, Mapbox and other libraries) keep their own licences.
+
 MIT License
 
 Copyright (c) 2018 Ali Ashraf

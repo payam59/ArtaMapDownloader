@@ -39,7 +39,7 @@
 		<div id='main-title'>Arta Map Downloader</div>
 		<div id='title-byline'>
 			by <a href='https://www.artacyber.com' target='_blank' rel='noopener'>Arta Cyber Inc. - artacyber.com</a>
-			<div class='credit-line'>Based on <a href='https://github.com/AliFlux/MapTilesDownloader' target='_blank' rel='noopener'>Map Tiles Downloader</a> by Ali Ashraf (MIT)</div>
+			<div class='credit-line'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact us</a></div>
 		</div>
 
 	</div>
@@ -48,7 +48,7 @@
 
 		<div class='brand-header'>
 			<a href='https://www.artacyber.com' target='_blank' rel='noopener'><img class='brand-lockup' src='brand/lockup-light.svg' alt='Arta Cyber Inc.' width='195' height='44'/></a>
-			<div class='brand-app-name'>Arta Map Downloader</div>
+			<div class='brand-app-name'>Arta Map Downloader<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div></div>
 		</div>
 
 		<div class='center-align resume-entry'>
@@ -179,7 +179,7 @@
 
 		<div class='brand-header'>
 			<a href='https://www.artacyber.com' target='_blank' rel='noopener'><img class='brand-lockup' src='brand/lockup-light.svg' alt='Arta Cyber Inc.' width='195' height='44'/></a>
-			<div class='brand-app-name'>Arta Map Downloader</div>
+			<div class='brand-app-name'>Arta Map Downloader<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div></div>
 		</div>
 
 		<div class='step-number'>
@@ -216,7 +216,7 @@
 
 		<div class='brand-header'>
 			<a href='https://www.artacyber.com' target='_blank' rel='noopener'><img class='brand-lockup' src='brand/lockup-light.svg' alt='Arta Cyber Inc.' width='195' height='44'/></a>
-			<div class='brand-app-name'>Arta Map Downloader</div>
+			<div class='brand-app-name'>Arta Map Downloader<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div></div>
 		</div>
 
 		<div class='step-number'>
@@ -311,6 +311,56 @@
 			<button class='waves-effect waves-light z-depth-0 btn red lighten-5 black-text' id='resume-close-button'>Close</button>
 		</div>
 
+	</div>
+
+	<div id='about-modal' class='modal info-modal'>
+		<div class='modal-content'>
+			<h5>Arta Map Downloader <span class='version-tag'>version <span class='app-version'>1.0.0</span></span></h5>
+			<p>Download map tiles from Bing, Google, OpenStreetMap, ESRI or any tile server whose URL takes <code>{x}</code>, <code>{y}</code>, <code>{z}</code> or <code>{quad}</code>, for an area you draw on the map, into a folder of tiles, an MBTiles file or a Repo file. Downloads run on this computer's local server, can be stopped and resumed, and an existing tile folder can be opened to see what is there and fetch only what is missing.</p>
+			<h6>What is new compared with the original</h6>
+			<ul class='browser-default'>
+				<li>Resume a stopped or interrupted download; only missing tiles are fetched again.</li>
+				<li>Open an existing tile folder or MBTiles file, with a green / red coverage overlay and a have / missing table per zoom.</li>
+				<li>An editable download rectangle with a live missing-tile count.</li>
+				<li>Fixes for the slowdown and memory growth on large downloads.</li>
+				<li>Listens on this computer only (localhost) by default.</li>
+			</ul>
+			<p class='credit-text'>Arta Map Downloader is based on <a href='https://github.com/AliFlux/MapTilesDownloader' target='_blank' rel='noopener'>Map Tiles Downloader</a> by Ali Ashraf (MIT licence). It was enhanced, bug-fixed and extended with new features by Arta Cyber Inc.</p>
+			<p class='credit-text'>License: free for personal, non-commercial use; selling, reselling, rebranding and commercial use need written permission from Arta Cyber Inc. See the LICENSE file included with the software.</p>
+			<div class='about-company'>
+				<img src='brand/icon-primary.svg' alt='' width='48' height='48'/>
+				<div>
+					<div class='company-name'>Arta Cyber Inc.</div>
+					<p>A small security and network engineering company in Ottawa. Cybersecurity is the main work, assessment, penetration testing and standards, across IT and OT alike; we also design, maintain and supply the networks we defend. Arta is Old Persian for truth and right order. <a href='https://www.artacyber.com/about' target='_blank' rel='noopener'>More about us</a></p>
+				</div>
+			</div>
+		</div>
+		<div class='modal-footer'>
+			<a href='#contact-modal' class='modal-close modal-trigger waves-effect btn-flat'>Contact us</a>
+			<a href='javascript:void(0)' class='modal-close waves-effect btn-flat'>Close</a>
+		</div>
+	</div>
+
+	<div id='contact-modal' class='modal info-modal'>
+		<div class='modal-content'>
+			<div class='about-company'>
+				<img src='brand/icon-primary.svg' alt='' width='48' height='48'/>
+				<div>
+					<h5 class='company-name'>Contact Arta Cyber Inc.</h5>
+					<p>Ottawa, Ontario, Canada. An email is enough to start with.</p>
+				</div>
+			</div>
+			<table class='contact-table'>
+				<tr><td>Email</td><td><a href='mailto:info@artacyber.com' target='_blank' rel='noopener'>info@artacyber.com</a></td></tr>
+				<tr><td>Website</td><td><a href='https://www.artacyber.com' target='_blank' rel='noopener'>www.artacyber.com</a></td></tr>
+				<tr><td>Contact page</td><td><a href='https://www.artacyber.com/contact' target='_blank' rel='noopener'>www.artacyber.com/contact</a></td></tr>
+				<tr><td>This app</td><td>Report an issue or request a feature: <a href='mailto:info@artacyber.com' target='_blank' rel='noopener'>info@artacyber.com</a></td></tr>
+			</table>
+			<p class='hints contact-note'>These links open in your browser or mail app. Arta Map Downloader itself sends nothing to Arta Cyber Inc.</p>
+		</div>
+		<div class='modal-footer'>
+			<a href='javascript:void(0)' class='modal-close waves-effect btn-flat'>Close</a>
+		</div>
 	</div>
 
 </body>

@@ -9,13 +9,13 @@
 
 # Arta Map Downloader
 
-**A super easy to use GUI for downloading map tiles, with resume.** By [Arta Cyber Inc.](https://www.artacyber.com), based on [Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader) by Ali Ashraf.
+**A super easy to use GUI for downloading map tiles, with resume.** By [Arta Cyber Inc.](https://www.artacyber.com). Version 1.0.0.
 
 <p align="center">
   <img src="gif/map-tiles-downloader.gif" alt="Arta Map Downloader demo (recorded with the original Map Tiles Downloader UI)">
 </p>
 
-> **Arta Map Downloader** is an enhanced fork of **[Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader)** by **[Ali Ashraf (AliFlux)](https://github.com/AliFlux)**, released under the MIT License. All credit for the original idea, UI and downloader goes to him. This fork adds resume, an editable download rectangle and fixes for the slowdown and memory growth on large downloads. See [What's new in this fork](#whats-new-in-this-fork) and [Credits](#credits).
+> Based on the open-source [Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader), enhanced, bug-fixed and extended with new features by Arta Cyber Inc. See [What's new in this fork](#whats-new-in-this-fork).
 
 ## What's new in this fork
 
@@ -104,7 +104,7 @@ Now open the browser and head over to `http://localhost:8080`. The downloaded ma
 
 ## Purpose
 
-In the original author's words: I design map related things as a hobby, and often I have to work with offline maps that require tiles to be stored on my local system. Downloading tiles is a bit of a headache, and the current solutions have user experience issues. So I built this tiny script in a couple of hours to speed up my work.
+Offline maps need their tiles stored locally, and collecting them by hand is slow and error-prone. Arta Map Downloader lets you pick an area on a map, choose the zoom levels and a tile source, and save the tiles to a folder or an MBTiles file, then resume or extend that download later.
 
 ## Features
 
@@ -193,21 +193,25 @@ The output is a tiled, deflate-compressed TIFF compatible with GIS tools (QGIS, 
 
 ## Credits
 
-- Original project: [AliFlux/MapTilesDownloader](https://github.com/AliFlux/MapTilesDownloader) by [Ali Ashraf](http://aliashraf.net) (MIT License). The base map UI, tile providers list, downloader, stitcher and Docker setup come from it.
-- Resume, editable rectangle, performance and memory work in this fork: Arta Cyber Inc.
+Based on the open-source [Map Tiles Downloader](https://github.com/AliFlux/MapTilesDownloader): the base map UI, tile provider list, downloader, stitcher and Docker setup come from it. Enhanced, bug-fixed and extended with new features by Arta Cyber Inc.
 
 ## Important Disclaimer
 
 Downloading map tiles is subject to the terms and conditions of the tile provider. Some providers such as Google Maps have restrictions in place to avoid abuse, therefore before downloading any tiles make sure you understand their TOCs. We recommend not using Google, Bing, and ESRI tiles in any commercial application without their consent.
 
-## Arta Cyber Inc.
+## About and contact
 
-Arta Map Downloader is maintained by Arta Cyber Inc. For releases, announcements and our other work, visit [www.artacyber.com](https://www.artacyber.com).
+Arta Map Downloader version 1.0.0, by Arta Cyber Inc. (the *About* and *Contact us* links in the app show the same details).
+
+Arta Cyber Inc. is a small security and network engineering company in Ottawa. Cybersecurity is the main work, assessment, penetration testing and standards, across IT and OT alike; it also designs, maintains and supplies the networks it defends. Arta is Old Persian for truth and right order.
+
+- Email: [info@artacyber.com](mailto:info@artacyber.com)
+- Website: [www.artacyber.com](https://www.artacyber.com), contact page [www.artacyber.com/contact](https://www.artacyber.com/contact)
+- Ottawa, Ontario, Canada
+- Report an issue or request a feature: email [info@artacyber.com](mailto:info@artacyber.com)
 
 ## License
 
-This software is released under the [MIT License](LICENSE). Please read LICENSE for information on the
-software availability and distribution.
+Arta Map Downloader is free for personal, non-commercial use. Selling, reselling, rebranding and commercial use need written permission from Arta Cyber Inc. See [LICENSE](LICENSE). Contact: [info@artacyber.com](mailto:info@artacyber.com)
 
-Copyright (c) 2020 [Ali Ashraf](http://aliashraf.net)
-Copyright (c) 2026 [Arta Cyber Inc.](https://www.artacyber.com) (modifications in Arta Map Downloader), under the same MIT License.
+Copyright (c) 2026 [Arta Cyber Inc.](https://www.artacyber.com)

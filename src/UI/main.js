@@ -115,6 +115,13 @@ $(function() {
 		$('.dropdown-trigger').dropdown({
 			constrainWidth: false,
 		});
+
+		// About / Contact: plain Materialize modals (Esc, backdrop click and Close all dismiss them)
+		M.Modal.init(document.querySelectorAll('.info-modal'), {});
+
+		api("get", "/api/version").done(function(result) {
+			$(".app-version").text(result.version);
+		});
 	}
 
 	function initializeSources() {

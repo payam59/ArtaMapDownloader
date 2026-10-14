@@ -25,6 +25,7 @@ from repo_writer import RepoWriter
 from utils import Utils
 from tile_index import TileIndex, Region, IndexRegistry, openTileSet, listTileSets, validatePattern, validateRelativeDirectory, isInside, DEFAULT_PATTERN
 from job_runner import DownloadJob
+from version import VERSION
 
 try:
     from stitch import Stitcher
@@ -499,6 +500,10 @@ class serverHandler(BaseHTTPRequestHandler):
 			self.sendJson(result)
 			return
 
+		if parts.path == '/api/version':
+			self.sendJson({"code": 200, "name": "Arta Map Downloader", "version": VERSION})
+			return
+
 		if parts.path == '/api/datasets':
 			self.sendJson({"code": 200, "outputDirectory": OUTPUT_DIR, "items": listTileSets(OUTPUT_DIR)})
 			return
@@ -568,9 +573,10 @@ def run():
 	parser = argparse.ArgumentParser(description="Arta Map Downloader by Arta Cyber Inc.")
 	parser.add_argument("--port", type=int, default=8080, help="port to listen on (default 8080)")
 	parser.add_argument("--host", default="127.0.0.1", help="address to bind (default 127.0.0.1; use 0.0.0.0 inside Docker)")
+	parser.add_argument("--version", action="version", version="Arta Map Downloader " + VERSION)
 	args = parser.parse_args()
 
-	print('Starting Arta Map Downloader (Arta Cyber Inc., https://www.artacyber.com)...')
+	print('Starting Arta Map Downloader ' + VERSION + ' (Arta Cyber Inc., https://www.artacyber.com)...')
 	os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 	if args.host in ("127.0.0.1", "localhost", "::1"):

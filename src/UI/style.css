@@ -87,6 +87,91 @@ html, body {
 	margin-left: -14px;
 }
 
+.brand-links {
+	font-weight: 400;
+	font-size: 11px;
+	line-height: 13px;
+	letter-spacing: 0;
+}
+
+.brand-links a, #title-byline .credit-line a {
+	cursor: pointer;
+}
+
+.info-modal {
+	max-width: 620px;
+}
+
+.info-modal .modal-content {
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.info-modal h5 {
+	font-weight: 700;
+	margin-top: 0;
+}
+
+.info-modal h6 {
+	font-weight: 600;
+	margin-top: 14px;
+}
+
+.info-modal .version-tag {
+	font-size: 13px;
+	font-weight: 400;
+	opacity: 0.6;
+	margin-left: 6px;
+}
+
+.info-modal ul.browser-default li {
+	list-style-type: disc;
+}
+
+.info-modal .credit-text {
+	font-size: 13px;
+	color: #455a64;
+}
+
+.about-company {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid #eceff1;
+}
+
+.about-company img {
+	flex: none;
+}
+
+.about-company .company-name {
+	font-weight: 700;
+	font-size: 16px;
+	color: #101A2C;
+	margin: 0 0 4px 0;
+}
+
+.about-company p {
+	margin: 0;
+	font-size: 13px;
+}
+
+.contact-table td {
+	padding: 6px 8px;
+}
+
+.contact-table td:first-child {
+	font-weight: 600;
+	width: 120px;
+}
+
+.contact-note {
+	margin-left: 0;
+	font-size: 12px;
+}
+
 #title-byline {
 	position: absolute;
 	top: 66px;
