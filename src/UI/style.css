@@ -1,3 +1,13 @@
+/* Arta Cyber brand colours, copied exactly from the brand sources:
+   --arta-ink         #101A2C  artacyber-site/assets/css/site.css line 36 (--ink), also the lockup wordmark fill
+   --arta-blue        #2B4C8C  artacyber-site/assets/brand/icon-primary.svg (fill of the mark)
+   --arta-bronze-ink  #7A5C39  artacyber-site/assets/css/site.css line 41 (--bronze-ink, the site's link accent) */
+:root {
+	--arta-ink: #101A2C;
+	--arta-blue: #2B4C8C;
+	--arta-bronze-ink: #7A5C39;
+}
+
 html, body {
 	height: 100%;
 	margin: 0px;
@@ -50,52 +60,64 @@ html, body {
 	height: 100%;
 }
 
-#main-title {
-	font-size: 35px;
-	font-weight: 700;
-	font-family: 'Open Sans';
-	color: white;
-	position: absolute;
-	top: 18px;
-	left: 30px;
-	z-index: 10000000000000000;
-	text-transform: uppercase;
-	text-shadow: 0px 3px 15px rgb(0, 0, 0);
-	letter-spacing: 2px;
-}
-
-/* one 44px row: the lockup's own right margin is blank, so the app name sits there */
+/* sidebar header, three short rows: company (mark + name), product name, About / Contact */
 .brand-header {
-	display: flex;
-	align-items: center;
-	margin: -14px 0 4px -14px;
-	height: 44px;
+	margin: -14px 0 2px -10px;
+	line-height: 1;
 }
 
-.brand-lockup {
+.brand-company {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--arta-ink);
+	font-weight: 600;
+	font-size: 13px;
+	letter-spacing: 0.08em;
+	text-decoration: none;
+}
+
+.brand-company img {
 	display: block;
-	width: 195px;
-	height: 44px;
+	width: 20px;
+	height: 20px;
 }
 
 .brand-app-name {
 	font-weight: 700;
-	font-size: 13px;
+	font-size: 14px;
 	line-height: 15px;
-	color: #101A2C;
-	max-width: 96px;
-	margin-left: -14px;
+	color: var(--arta-blue);
+	margin: 2px 0 0 27px;
 }
 
 .brand-links {
-	font-weight: 400;
 	font-size: 11px;
 	line-height: 13px;
-	letter-spacing: 0;
+	margin-left: 27px;
+	color: var(--arta-ink);
 }
 
-.brand-links a, #title-byline .credit-line a {
+.brand-links a {
+	color: var(--arta-bronze-ink);
 	cursor: pointer;
+}
+
+.brand-links a:hover {
+	text-decoration: underline;
+}
+
+.source-label {
+	white-space: nowrap;
+}
+
+.source-name {
+	color: var(--arta-blue);
+	font-weight: 600;
+}
+
+#sources li.active a, #resume-sources li.active a {
+	font-weight: 700;
 }
 
 .info-modal {
@@ -170,28 +192,6 @@ html, body {
 .contact-note {
 	margin-left: 0;
 	font-size: 12px;
-}
-
-#title-byline {
-	position: absolute;
-	top: 66px;
-	left: 32px;
-	z-index: 10000000000000000;
-	color: white;
-	font-size: 13px;
-	font-weight: 600;
-	text-shadow: 0px 2px 8px rgb(0, 0, 0);
-}
-
-#title-byline a {
-	color: white;
-	text-decoration: underline;
-}
-
-#title-byline .credit-line {
-	font-size: 11px;
-	font-weight: 400;
-	opacity: 0.9;
 }
 
 .step-number {
@@ -302,7 +302,7 @@ hr {
 }
 
 .resume-entry {
-	margin-bottom: 10px;
+	margin-bottom: 6px;
 }
 
 #dataset-list {

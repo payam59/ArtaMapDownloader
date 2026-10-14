@@ -417,7 +417,7 @@ class serverHandler(BaseHTTPRequestHandler):
 			mode = data.get("mode", "new")
 			source = str(data.get("source") or "").strip()
 			outputScale = int(data.get("outputScale", 1))
-			threads = int(data.get("threads", 4))
+			threads = int(data.get("threads", 16))
 			minZoom = int(data.get("minZoom", 0))
 			maxZoom = int(data.get("maxZoom", 0))
 			minZoom, maxZoom = min(minZoom, maxZoom), max(minZoom, maxZoom)

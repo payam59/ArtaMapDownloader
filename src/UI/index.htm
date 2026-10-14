@@ -36,19 +36,14 @@
 
 		<div id='map-view'></div>
 
-		<div id='main-title'>Arta Map Downloader</div>
-		<div id='title-byline'>
-			by <a href='https://www.artacyber.com' target='_blank' rel='noopener'>Arta Cyber Inc. - artacyber.com</a>
-			<div class='credit-line'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact us</a></div>
-		</div>
-
 	</div>
 
 	<div class='sidebar' id='main-sidebar'>
 
 		<div class='brand-header'>
-			<a href='https://www.artacyber.com' target='_blank' rel='noopener'><img class='brand-lockup' src='brand/lockup-light.svg' alt='Arta Cyber Inc.' width='195' height='44'/></a>
-			<div class='brand-app-name'>Arta Map Downloader<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div></div>
+			<a class='brand-company' href='https://www.artacyber.com' target='_blank' rel='noopener'><img src='brand/icon-primary.svg' alt='' width='20' height='20'/><span>Arta Cyber Inc.</span></a>
+			<div class='brand-app-name'>Arta Map Downloader</div>
+			<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div>
 		</div>
 
 		<div class='center-align resume-entry'>
@@ -105,13 +100,13 @@
 
 			<div class="row">
 				<div class="input-field col s10">
-					<input id="source-box" type="text" value='http://ecn.t0.tiles.virtualearth.net/tiles/a{quad}.jpeg?g=129&mkt=en&stl=H'>
-					<label for="source-box">Map Tile Source</label>
+					<input id="source-box" type="text" value='https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'>
+					<label for="source-box" class='source-label'><span id='source-name'>Map Tile Source</span></label>
 				</div>
 				<div class="input-field col s2">
 					<a class='waves-effect waves-light btn-small blue-grey lighten-2 z-depth-0 dropdown-trigger' id='source-select' href='#' data-target='sources'>⯆</a>
 
-					<ul id='sources' class='dropdown-content source-list' data-input='#source-box'>
+					<ul id='sources' class='dropdown-content source-list' data-input='#source-box' data-label='#source-name'>
 					</ul>
 				</div>
 			</div>
@@ -159,7 +154,7 @@
 			</div>
 
 			<div class="input-field col s12">
-				<input id="parallel-threads-box" type="text" value="4">
+				<input id="parallel-threads-box" type="text" value="16">
 				<label for="parallel-threads-box">Parallel downloads</label>
 			</div>
 		</div>
@@ -178,8 +173,9 @@
 	<div class='sidebar' id='download-sidebar' style="display: none;">
 
 		<div class='brand-header'>
-			<a href='https://www.artacyber.com' target='_blank' rel='noopener'><img class='brand-lockup' src='brand/lockup-light.svg' alt='Arta Cyber Inc.' width='195' height='44'/></a>
-			<div class='brand-app-name'>Arta Map Downloader<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div></div>
+			<a class='brand-company' href='https://www.artacyber.com' target='_blank' rel='noopener'><img src='brand/icon-primary.svg' alt='' width='20' height='20'/><span>Arta Cyber Inc.</span></a>
+			<div class='brand-app-name'>Arta Map Downloader</div>
+			<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div>
 		</div>
 
 		<div class='step-number'>
@@ -215,8 +211,9 @@
 	<div class='sidebar' id='resume-sidebar' style="display: none;">
 
 		<div class='brand-header'>
-			<a href='https://www.artacyber.com' target='_blank' rel='noopener'><img class='brand-lockup' src='brand/lockup-light.svg' alt='Arta Cyber Inc.' width='195' height='44'/></a>
-			<div class='brand-app-name'>Arta Map Downloader<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div></div>
+			<a class='brand-company' href='https://www.artacyber.com' target='_blank' rel='noopener'><img src='brand/icon-primary.svg' alt='' width='20' height='20'/><span>Arta Cyber Inc.</span></a>
+			<div class='brand-app-name'>Arta Map Downloader</div>
+			<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div>
 		</div>
 
 		<div class='step-number'>
@@ -253,12 +250,12 @@
 
 			<div class="row">
 				<div class="input-field col s10">
-					<input id="resume-source-box" type="text" value=''>
-					<label for="resume-source-box" class="active">Map Tile Source</label>
+					<input id="resume-source-box" type="text" value='https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'>
+					<label for="resume-source-box" class="active source-label"><span id='resume-source-name'>Map Tile Source</span></label>
 				</div>
 				<div class="input-field col s2">
 					<a class='waves-effect waves-light btn-small blue-grey lighten-2 z-depth-0 dropdown-trigger' id='resume-source-select' href='#' data-target='resume-sources'>⯆</a>
-					<ul id='resume-sources' class='dropdown-content source-list' data-input='#resume-source-box'>
+					<ul id='resume-sources' class='dropdown-content source-list' data-input='#resume-source-box' data-label='#resume-source-name'>
 					</ul>
 				</div>
 			</div>
@@ -273,7 +270,7 @@
 					<label for="resume-zoom-to-box" class="active">To zoom</label>
 				</div>
 				<div class="input-field col s4">
-					<input id="resume-threads-box" type="text" value='4'/>
+					<input id="resume-threads-box" type="text" value='16'/>
 					<label for="resume-threads-box" class="active">Parallel:</label>
 				</div>
 			</div>

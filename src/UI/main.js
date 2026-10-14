@@ -47,6 +47,10 @@ $(function() {
 
 	};
 
+	// defaults for a fresh page; index.htm carries the same values so they show before this script runs
+	var DEFAULT_SOURCE = "ESRI World Imagery";
+	var DEFAULT_THREADS = 16;
+
 	function api(type, url, data) {
 		var options = {
 			url: url,
@@ -147,11 +151,39 @@ $(function() {
 					var url = $(this).attr("data-url");
 					target.val(url);
 					M.updateTextFields();
+					syncSourceLabel(dropdown);
 				})
 
 				dropdown.append(item);
 			}
+
+			target.on("input change", function() {
+				syncSourceLabel(dropdown);
+			});
+			syncSourceLabel(dropdown);
 		});
+	}
+
+	// show which provider the source box holds, and mark it in the dropdown
+	function syncSourceLabel(dropdown) {
+		var target = $(dropdown.attr("data-input"));
+		var value = $.trim(target.val());
+		var name = null;
+		for(var key in sources) {
+			if(sources[key] != "" && sources[key] == value) {
+				name = key;
+			}
+		}
+		dropdown.find("li").each(function() {
+			$(this).toggleClass("active", $(this).attr("data-url") == value);
+		});
+		// one short line in the field label: "Source: <provider>", or the plain label for a custom URL
+		var label = $(dropdown.attr("data-label")).empty();
+		if(name) {
+			label.append(document.createTextNode("Source: ")).append($("<span class='source-name'></span>").text(name));
+		} else {
+			label.text("Map Tile Source");
+		}
 	}
 
 	function initializeSearch() {
@@ -647,7 +679,7 @@ $(function() {
 			outputFile: $("#output-file-box").val(),
 			outputType: $("#output-type").val(),
 			outputScale: parseInt($("#output-scale").val()),
-			threads: parseInt($("#parallel-threads-box").val()),
+			threads: parseInt($("#parallel-threads-box").val()) || DEFAULT_THREADS,
 			source: $("#source-box").val(),
 			timestamp: Date.now(),
 			bounds: getBoundsArray(),
@@ -973,7 +1005,11 @@ $(function() {
 		}
 		$("#dataset-notes").html(notes.map(function(n) { return $("<div></div>").text(n).html(); }).join("<br/>"));
 
-		$("#resume-source-box").val(result.source || "");
+		// a folder with no recorded source gets the default provider pre-filled, and the notes say so
+		$("#resume-source-box").val(result.source || sources[DEFAULT_SOURCE]).trigger("change");
+		if(!result.source) {
+			$("#dataset-notes").append($("<div></div>").text("No tile source recorded for this folder: " + DEFAULT_SOURCE + " is pre-filled. Change it if the folder came from another provider."));
+		}
 		$("#resume-zoom-from-box").val(result.minZoom != null ? result.minZoom : 0);
 		$("#resume-zoom-to-box").val(result.maxZoom != null ? result.maxZoom : 0);
 		$("#resume-scale").text(result.outputScale + "x");
@@ -1123,7 +1159,7 @@ $(function() {
 			minZoom: zooms[0],
 			maxZoom: zooms[1],
 			outputScale: dataset.outputScale || 1,
-			threads: parseInt($("#resume-threads-box").val()) || 4,
+			threads: parseInt($("#resume-threads-box").val()) || DEFAULT_THREADS,
 			bounds: getBoundsArray(),
 			polygon: getPolygon(),
 		});
