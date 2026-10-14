@@ -85,22 +85,24 @@ $(function() {
 
 	// ---------- map, base layers and map controls ----------
 
-	// base map choice: street (OSM), satellite (ESRI) or blank (no internet needed), remembered per browser
+	// base map choice: the selected download source (default), street (OSM), satellite (ESRI) or blank
+	// (no internet needed); remembered per browser
 	var BASE_KEY = "arta-map-downloader.basemap";
 	// neutral light ground for the blank base map (same as the page background in style.css)
 	var BLANK_COLOR = "#e9e7e1";
-	var currentBase = "street";
+	var currentBase = "source";
 	var baseNoticeDismissed = false;
+	var noticeKind = null;
 
 	function readSavedBase() {
 		try {
 			var saved = window.localStorage.getItem(BASE_KEY);
-			if(saved == "street" || saved == "satellite" || saved == "blank") {
+			if(saved == "source" || saved == "street" || saved == "satellite" || saved == "blank") {
 				return saved;
 			}
 		} catch(e) {
 		}
-		return "street";
+		return "source";
 	}
 
 	function initializeMap() {
@@ -109,6 +111,8 @@ $(function() {
 
 		map = new mapboxgl.Map({
 			container: 'map-view',
+			// the credit line is drawn by the page (#map-attrib) so it names only the tiles actually shown
+			attributionControl: false,
 			style: {
 				version: 8,
 				sources: {
@@ -116,16 +120,14 @@ $(function() {
 						type: 'raster',
 						tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
 						tileSize: 256,
-						maxzoom: 19,
-						attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+						maxzoom: 19
 					},
 					// satellite preview only; the download source is chosen separately in the card
 					'esri-imagery': {
 						type: 'raster',
 						tiles: ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
 						tileSize: 256,
-						maxzoom: 19,
-						attribution: 'Imagery © Esri'
+						maxzoom: 19
 					}
 				},
 				// only the visible base layer requests tiles, so the blank base map makes no external request
@@ -159,6 +161,7 @@ $(function() {
 			drawGrid();
 			refreshCoverage();
 			showCoords(map.getCenter());
+			applyPreview();
 		});
 
 		// base tiles that fail to load (offline, provider down) show one small notice; anything else is logged as before
@@ -166,8 +169,13 @@ $(function() {
 			var baseSource = {'street': 'osm', 'satellite': 'esri-imagery'}[currentBase];
 			if(e && e.sourceId && (e.sourceId == 'osm' || e.sourceId == 'esri-imagery')) {
 				if(e.sourceId == baseSource) {
-					showBaseNotice();
+					showBaseNotice("base");
 				}
+				return;
+			}
+			// preview tiles come through the local server, which answers failures with a blank tile;
+			// /api/preview/status decides the notice, so a stray load error here is not logged
+			if(e && e.sourceId && e.sourceId.indexOf("preview-") == 0) {
 				return;
 			}
 			if(window.console) {
@@ -176,6 +184,11 @@ $(function() {
 		});
 
 		map.on('move', placeAreaPill);
+		map.on('moveend', function() {
+			if(currentBase == "source" && preview.id) {
+				schedulePreviewStatus(1500);
+			}
+		});
 		$(window).on('resize', placeAreaPill);
 
 		map.on('mousemove', function(e) {
@@ -203,9 +216,7 @@ $(function() {
 	function setBase(base) {
 		currentBase = base;
 		markBaseButton();
-		baseNoticeDismissed = false;
-		$("#basemap-notice").prop("hidden", true);
-		placeAreaPill();
+		hideNotice();
 		// the style is loaded as an object, so layout changes work before the first render too
 		map.setLayoutProperty('osm-tiles', 'visibility', base == 'street' ? 'visible' : 'none');
 		map.setLayoutProperty('esri-tiles', 'visibility', base == 'satellite' ? 'visible' : 'none');
@@ -213,14 +224,206 @@ $(function() {
 			window.localStorage.setItem(BASE_KEY, base);
 		} catch(e) {
 		}
+		applyPreview();
+		updateAttribution();
 	}
 
-	function showBaseNotice() {
+	// kind "base": street/satellite tiles failed (offline); kind "preview": the selected source cannot be shown
+	function showBaseNotice(kind, detail) {
 		if(baseNoticeDismissed || currentBase == "blank") {
 			return;
 		}
+		noticeKind = kind;
+		if(kind == "preview") {
+			$("#basemap-notice-text").text("Preview unavailable for this source" + (detail ? " (" + detail + ")" : "") + ". Downloads are not affected.");
+			$("#basemap-notice-action").text("Use street map");
+		} else {
+			$("#basemap-notice-text").text("Base map unavailable offline. Your downloaded tiles can still be shown.");
+			$("#basemap-notice-action").text("Use blank map");
+		}
 		$("#basemap-notice").prop("hidden", false);
+		$("#map-wrap").addClass("notice-open");
 		placeAreaPill();
+	}
+
+	function hideNotice() {
+		baseNoticeDismissed = false;
+		noticeKind = null;
+		$("#basemap-notice").prop("hidden", true);
+		$("#map-wrap").removeClass("notice-open");
+		placeAreaPill();
+	}
+
+	// ---------- preview of the selected download source ----------
+	// The map shows the template in the card's source field (or the resume panel's, while a folder is
+	// open). Tiles come through /api/preview on the local server, which fills the template exactly like
+	// the downloader does ({x} {y} {z} {quad} {scale:22}) and sends the same request headers.
+
+	var preview = {id: null, template: null, pending: null, seq: 0, timer: null, statusTimer: null};
+
+	function activeSourceTemplate() {
+		var box = $("#resume-sidebar").is(":visible") && dataset ? $("#resume-source-box") : $("#source-box");
+		return $.trim(box.val() || "");
+	}
+
+	function sourceName(template) {
+		for(var key in sources) {
+			if(sources[key] && sources[key] == template) {
+				return key;
+			}
+		}
+		var match = /^[a-z]+:\/\/([^\/?#]+)/i.exec(template);
+		return match ? match[1] : "custom URL";
+	}
+
+	function templateProblem(template) {
+		if(template == "") {
+			return "no tile URL";
+		}
+		if(!/^https?:\/\//i.test(template)) {
+			return "the URL must start with http:// or https://";
+		}
+		if(!((template.indexOf("{x}") >= 0 && template.indexOf("{y}") >= 0 && template.indexOf("{z}") >= 0) || template.indexOf("{quad}") >= 0)) {
+			return "the URL has no {x}, {y}, {z} or {quad} placeholders";
+		}
+		return null;
+	}
+
+	function schedulePreview(ms) {
+		if(preview.timer) {
+			clearTimeout(preview.timer);
+		}
+		preview.timer = setTimeout(function() {
+			preview.timer = null;
+			applyPreview();
+		}, ms === undefined ? 400 : ms);
+	}
+
+	function removePreviewLayer() {
+		if(!map) {
+			return;
+		}
+		if(map.getLayer("preview-tiles")) {
+			map.removeLayer("preview-tiles");
+		}
+		var style = map.getStyle();
+		Object.keys(style ? style.sources : {}).forEach(function(id) {
+			if(id.indexOf("preview-") == 0) {
+				map.removeSource(id);
+			}
+		});
+		preview.id = null;
+	}
+
+	function applyPreview() {
+		updatePreviewLabel();
+		if(!mapReady) {
+			return;
+		}
+		if(currentBase != "source") {
+			preview.seq++;
+			preview.pending = null;
+			removePreviewLayer();
+			preview.template = null;
+			return;
+		}
+		var template = activeSourceTemplate();
+		// a pick, an Enter and leaving the field can all ask for the same template: register it once
+		if(template == preview.pending) {
+			return;
+		}
+		if(template == preview.template && preview.id && map.getLayer("preview-tiles")) {
+			return;
+		}
+		var seq = ++preview.seq;
+		var problem = templateProblem(template);
+		if(problem) {
+			preview.pending = null;
+			removePreviewLayer();
+			preview.template = template;
+			showBaseNotice("preview", problem);
+			return;
+		}
+		preview.pending = template;
+		api("post", "/api/preview/source", {template: template}).done(function(result) {
+			if(seq != preview.seq || currentBase != "source") {
+				return;
+			}
+			preview.pending = null;
+			removePreviewLayer();
+			preview.template = template;
+			preview.id = result.id;
+			if(noticeKind == "preview") {
+				hideNotice();
+			}
+			map.addSource("preview-" + result.id, {
+				type: "raster",
+				tiles: [location.origin + "/api/preview/tile/" + result.id + "/{z}/{x}/{y}"],
+				tileSize: 256,
+				maxzoom: 19,
+			});
+			// above the blank ground, under the street/satellite layers (hidden in this mode) and all overlays
+			map.addLayer({id: "preview-tiles", type: "raster", source: "preview-" + result.id}, "osm-tiles");
+			schedulePreviewStatus(2500);
+			updateAttribution();
+		}).fail(function(xhr) {
+			if(seq != preview.seq) {
+				return;
+			}
+			preview.pending = null;
+			removePreviewLayer();
+			preview.template = template;
+			showBaseNotice("preview", apiError(xhr, "the app server did not answer"));
+		});
+	}
+
+	function schedulePreviewStatus(ms) {
+		if(preview.statusTimer) {
+			clearTimeout(preview.statusTimer);
+		}
+		preview.statusTimer = setTimeout(checkPreviewStatus, ms);
+	}
+
+	// failures with no or few good tiles mean the source cannot be previewed (offline, blocked, bad URL)
+	function checkPreviewStatus() {
+		preview.statusTimer = null;
+		var id = preview.id;
+		if(!id || currentBase != "source") {
+			return;
+		}
+		api("get", "/api/preview/status/" + id).done(function(s) {
+			if(id != preview.id) {
+				return;
+			}
+			if((s.failed >= 2 && s.ok == 0) || (s.failed >= 6 && s.failed > s.ok * 2)) {
+				showBaseNotice("preview", s.lastError || "tiles could not be loaded");
+			} else if(s.ok > 0 && noticeKind == "preview") {
+				hideNotice();
+			}
+		});
+	}
+
+	function updatePreviewLabel() {
+		var show = currentBase == "source";
+		var template = activeSourceTemplate();
+		$("#preview-label-name").text(sourceName(template));
+		$("#preview-label").prop("hidden", !show).attr("title", template);
+		updateAttribution();
+		placeAreaPill();
+	}
+
+	// credits only the tiles on screen
+	function updateAttribution() {
+		var el = $("#map-attrib").empty();
+		if(currentBase == "street") {
+			el.append("© ").append($("<a target='_blank' rel='noopener'></a>").attr("href", "https://www.openstreetmap.org/copyright").text("OpenStreetMap")).append(" contributors");
+		} else if(currentBase == "satellite") {
+			el.text("Imagery © Esri");
+		} else if(currentBase == "source") {
+			var template = activeSourceTemplate();
+			el.text("Tiles: " + sourceName(template) + (/openstreetmap\.org/i.test(template) ? " © OpenStreetMap contributors" : ""));
+		}
+		el.prop("hidden", el.text() == "");
 	}
 
 	function showCoords(lngLat) {
@@ -235,14 +438,16 @@ $(function() {
 		});
 		markBaseButton();
 
-		$("#basemap-notice-blank").click(function() {
-			setBase("blank");
+		$("#basemap-notice-action").click(function() {
+			setBase(noticeKind == "preview" ? "street" : "blank");
 		});
 		$("#basemap-notice-close").click(function() {
 			baseNoticeDismissed = true;
 			$("#basemap-notice").prop("hidden", true);
+			$("#map-wrap").removeClass("notice-open");
 			placeAreaPill();
 		});
+		updateAttribution();
 
 		$("#zoom-in-button").click(function() { map.zoomIn(); });
 		$("#zoom-out-button").click(function() { map.zoomOut(); });
@@ -354,6 +559,26 @@ $(function() {
 
 			input.on("input change", function() {
 				syncSourceSelect(select);
+			});
+
+			// the map previews the source: a pick applies at once, typing after a short pause
+			select.on("change", function() {
+				if(select.val() != CUSTOM_SOURCE) {
+					schedulePreview(0);
+				}
+			});
+			input.on("input", function() {
+				updatePreviewLabel();
+				schedulePreview(900);
+			});
+			input.on("change blur", function() {
+				schedulePreview(0);
+			});
+			input.on("keydown", function(e) {
+				if(e.key == "Enter") {
+					e.preventDefault();
+					schedulePreview(0);
+				}
 			});
 
 			syncSourceSelect(select);
@@ -749,7 +974,7 @@ $(function() {
 		var box = map.getContainer().getBoundingClientRect();
 		var p = map.project([(region[0] + region[2]) / 2, region[3]]);
 		var bottomY = map.project([(region[0] + region[2]) / 2, region[1]]).y;
-		var obstacles = $("#basemap-toggle, #basemap-notice:not([hidden]), #map-buttons, #coords-readout, .mapboxgl-ctrl-scale").map(function() {
+		var obstacles = $("#basemap-toggle, #preview-label:not([hidden]), #basemap-notice:not([hidden]), #map-buttons, #coords-readout, .mapboxgl-ctrl-scale").map(function() {
 			var r = this.getBoundingClientRect();
 			return {left: r.left - box.left - 6, right: r.right - box.left + 6, top: r.top - box.top - 6, bottom: r.bottom - box.top + 6};
 		}).get();
@@ -1341,6 +1566,7 @@ $(function() {
 			openSeq++;
 			cancelStats();
 			dataset = null;
+			schedulePreview(0);
 			drawGrid();
 		});
 
@@ -1386,6 +1612,7 @@ $(function() {
 		$("#resume-sidebar").show().data("from-resume", true);
 		removeGrid();
 		loadDatasetList();
+		schedulePreview(0);
 	}
 
 	function loadDatasetList() {

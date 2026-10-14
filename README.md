@@ -29,6 +29,7 @@
 - **`job.json` manifest** written with every download (source, region, zooms, scale, file pattern, failed tiles).
 - **Server-side downloads.** The download runs on the server and the browser only polls progress, so closing or reloading the page no longer matters.
 - **`--port` and `--host` options** (defaults: `8080`, `127.0.0.1`).
+- **The map shows the chosen source.** The default *Selected source* view previews the tiles of the map source in the card (or, in the resume panel, the folder's source), fetched by the local server exactly as a download would fetch them. *Street map*, *Satellite* and *Blank* are still there.
 - **Works offline.** The map libraries are bundled in `src/UI/vendor`, and a *Blank* base map shows your downloaded tiles, the coverage overlay and the rectangle with no internet connection at all.
 
 ### Performance and memory fixes
@@ -181,9 +182,14 @@ Tile downloads time out after 20 seconds and are retried up to 3 times with back
 
 The app needs no internet connection of its own: the map libraries (Mapbox GL JS v0.50.0 and Mapbox GL Draw v1.0.9) are bundled in `src/UI/vendor`, with their licences and checksums in `src/UI/vendor/README.txt`.
 
+- The *Selected source* view needs the chosen tile provider to be reachable. When its tiles cannot be loaded (offline, blocked, wrong URL) a notice says *Preview unavailable for this source* and offers *Use street map*; downloads are not affected.
 - The *Street map* (OpenStreetMap) and *Satellite* (ESRI) base maps load their tiles from the internet. When those tiles cannot be loaded, a small notice says *Base map unavailable offline* and offers *Use blank map*.
 - The *Blank* base map is a plain light background that loads nothing from the internet. With it you can open a folder, see the downloaded tiles and the coverage overlay, edit the rectangle and resume a download from a local or network tile server. The app remembers the chosen base map in this browser.
 - The location search and the *Go to my location* button need the internet and, for location, the browser's permission. Location only works when the page is opened as `http://localhost`, `http://127.0.0.1` or over https; from another computer on the network (`--host 0.0.0.0`) the button explains this instead.
+
+## Map Preview of the Chosen Source
+
+The page registers the tile URL template it shows with the local server, and the server fetches preview tiles with the same `{x}`, `{y}`, `{z}`, `{quad}` and `{scale:22}` handling and request headers as the downloader. So the preview works for providers that do not allow browser requests, and shows what a download would get. To keep this from becoming an open proxy, the server only fetches a registered template (http or https, with tile placeholders, none in the host name), filled with tile numbers. It refuses link-local addresses (such as cloud metadata), multicast and reserved addresses, and allows loopback and private (LAN) addresses only when the browser runs on the same computer. It connects to the address it checked, follows no redirects, and passes on images only.
 
 ## Stitching Tiles into a Single Image
 
@@ -212,7 +218,7 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 Arta Map Downloader version 1.0.0, by Arta Cyber Inc. (*Help & about* in the app shows the same details).
 
-Privacy: the location search sends the text you type to [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/), only when you press Enter or the search button, and map tiles are loaded from the providers you choose (none with the *Blank* base map). *Go to my location* uses the browser's own location service and the position stays in the page. The app itself sends nothing to Arta Cyber Inc.
+Privacy: the location search sends the text you type to [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/), only when you press Enter or the search button, and map tiles are loaded from the providers you choose (none with the *Blank* base map; in the *Selected source* view this computer's app server fetches them). *Go to my location* uses the browser's own location service and the position stays in the page. The app itself sends nothing to Arta Cyber Inc.
 
 Arta Cyber Inc. is a small security and network engineering company in Ottawa. Cybersecurity is the main work, assessment, penetration testing and standards, across IT and OT alike; it also designs, maintains and supplies the networks it defends. Arta is Old Persian for truth and right order.
 

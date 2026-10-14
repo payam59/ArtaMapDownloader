@@ -18,6 +18,7 @@ import socket
 import base64
 import mimetypes
 import uuid
+import ipaddress
 
 from file_writer import FileWriter
 from mbtiles_writer import MbtilesWriter
@@ -26,6 +27,7 @@ from utils import Utils
 from tile_index import TileIndex, Region, IndexRegistry, openTileSet, listTileSets, validatePattern, validateRelativeDirectory, isInside, DEFAULT_PATTERN
 from job_runner import DownloadJob
 from version import VERSION
+import preview
 
 try:
     from stitch import Stitcher
@@ -395,6 +397,10 @@ class serverHandler(BaseHTTPRequestHandler):
 			result["code"] = 200
 			return result
 
+		elif path == '/api/preview/source':
+			# the map previews the tile source chosen in the card (see preview.py for the limits)
+			return {"code": 200, "id": preview.register(data.get("template"))}
+
 		elif path == '/api/job/start':
 			return self.startJob(data)
 
@@ -518,6 +524,31 @@ class serverHandler(BaseHTTPRequestHandler):
 			result = job.status(since)
 			result["code"] = 200
 			self.sendJson(result)
+			return
+
+		match = re.fullmatch(r"/api/preview/status/([0-9a-f]{12})", parts.path)
+		if match:
+			result = preview.status(match.group(1))
+			if result is None:
+				self.sendJson({"code": 404, "message": "Preview source not registered"}, 404)
+			else:
+				result["code"] = 200
+				self.sendJson(result)
+			return
+
+		match = re.fullmatch(r"/api/preview/tile/([0-9a-f]{12})/(\d+)/(\d+)/(\d+)", parts.path)
+		if match:
+			z, x, y = int(match.group(2)), int(match.group(3)), int(match.group(4))
+			if z > 24 or x >= (1 << z) or y >= (1 << z):
+				self.sendBody(404, "text/plain", b"not found")
+				return
+			clientIsLocal = ipaddress.ip_address(self.client_address[0].split("%")[0]).is_loopback
+			data, mime = preview.fetch(match.group(1), x, y, z, clientIsLocal)
+			if data is None:
+				# transparent instead of an error status: the page reads /api/preview/status for the notice
+				self.sendBody(200, "image/png", EMPTY_PNG, {"Cache-Control": "no-store"})
+			else:
+				self.sendBody(200, mime, data, {"Cache-Control": "private, max-age=600"})
 			return
 
 		match = re.fullmatch(r"/api/(tiles|coverage)/(\d+)/(\d+)/(\d+)(\.png)?", parts.path)

@@ -33,7 +33,11 @@
 		<div id='map-view'></div>
 
 		<div class='map-toggle' id='basemap-toggle' role='group' aria-label='Base map'>
-			<button type='button' class='toggle-btn active' data-base='street'>
+			<button type='button' class='toggle-btn active' data-base='source' title='Show the tiles of the map source chosen in the card'>
+				<svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'/></svg>
+				<span class='label-long'>Selected source</span><span class='label-short'>Source</span>
+			</button>
+			<button type='button' class='toggle-btn' data-base='street'>
 				<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14'/></svg>
 				<span class='label-long'>Street map</span><span class='label-short'>Street</span>
 			</button>
@@ -47,11 +51,17 @@
 			</button>
 		</div>
 
-		<div class='map-notice' id='basemap-notice' role='status' hidden>
-			<span class='map-notice-text'>Base map unavailable offline. Your downloaded tiles can still be shown.</span>
-			<button type='button' class='map-notice-action' id='basemap-notice-blank'>Use blank map</button>
-			<button type='button' class='map-notice-close' id='basemap-notice-close' title='Dismiss' aria-label='Dismiss'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M6 6l12 12M18 6 6 18'/></svg></button>
+		<!-- under the toggle: which source the map shows, and the notice when tiles cannot be shown -->
+		<div class='map-under-toggle' id='map-under-toggle'>
+			<div class='preview-label' id='preview-label' hidden><span class='preview-label-key'>Map:</span> <span id='preview-label-name'></span></div>
+			<div class='map-notice' id='basemap-notice' role='status' hidden>
+				<span class='map-notice-text' id='basemap-notice-text'>Base map unavailable offline. Your downloaded tiles can still be shown.</span>
+				<button type='button' class='map-notice-action' id='basemap-notice-action'>Use blank map</button>
+				<button type='button' class='map-notice-close' id='basemap-notice-close' title='Dismiss' aria-label='Dismiss'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M6 6l12 12M18 6 6 18'/></svg></button>
+			</div>
 		</div>
+
+		<div class='map-attrib' id='map-attrib'></div>
 
 		<div class='map-buttons' id='map-buttons'>
 			<button type='button' id='zoom-in-button' title='Zoom in' aria-label='Zoom in'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 5v14M5 12h14'/></svg></button>
