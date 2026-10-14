@@ -22,7 +22,7 @@
 ### New features
 
 - **Resume a download.** Stop it, close the tab or kill the server and carry on later: the tiles on disk are the record of what is done, and only missing tiles are fetched again.
-- **Open an existing tile folder.** *Resume / open existing folder* lists the folders in `src/output` or takes any absolute path to a tile folder or `.mbtiles` file. Folders made by older versions work too (the region and zooms come from `metadata.json` or from the tiles on disk).
+- **Open an existing tile folder.** *Open existing folder* (top of the card) lists the folders in `src/output` or takes any absolute path to a tile folder or `.mbtiles` file. Folders made by older versions work too (the region and zooms come from `metadata.json` or from the tiles on disk).
 - **Coverage on the map.** The folder's downloaded tiles are drawn on the map with a green (have) / red (missing) overlay, plus a have / missing / total table per zoom level.
 - **Editable download rectangle.** Drag a corner or edge to resize it, or the centre dot to move it. The tile estimate, the *Missing: N of M* figure, the table and the overlay update as you drag (about 15 ms per refresh on a 71k-tile folder), so you can grow the map and see exactly which new tiles are needed. Resume then downloads only those.
 - **Retry failed.** Tiles that failed are recorded in the manifest and can be retried on their own.
@@ -157,7 +157,7 @@ Set **Zoom from** and **Zoom to** to the same value to download only that level.
 
 ## Output
 
-Tiles are saved to `src/output/{timestamp}/` by default, in `{z}/{x}/{y}.png` folder structure. Both the output directory and file name format can be customised under **More Options** in the UI.
+Tiles are saved to `src/output/{timestamp}/` by default, in `{z}/{x}/{y}.png` folder structure. Both the output directory and file name format can be customised under **Advanced options** in the UI.
 
 ## Resuming a Download
 
@@ -166,7 +166,7 @@ Downloads run on the server, so the browser stays light even for hundreds of tho
 Every download writes a `job.json` manifest into its output folder (for MBTiles/Repo it sits beside the file as `tiles.mbtiles.job.json`). It records the tile source, region, zoom levels, scale, file pattern, and the list of tiles that failed.
 
 **To resume:**
-1. Click **Resume / open existing folder** at the top of the sidebar
+1. Click **Open existing folder** at the top of the card
 2. Pick a folder from `src/output`, or type the absolute path of any tile folder or `.mbtiles` file and click **Open**
 3. The map shows the folder's downloaded tiles, plus a coverage overlay (green = have, red = missing) at the zoom picked under the table. The table lists have / missing / total per zoom
 4. Check the source URL and zooms. The region is the orange rectangle on the map: drag a corner or an edge to resize it, or the centre dot to move it. The table, the *Missing: N of M* figure and the coverage overlay follow as you drag, so you can grow the map and see the new area turn red. Then click **Resume**: only the missing tiles inside the rectangle are downloaded. If everything is already there it says *Nothing to resume*. `job.json` keeps the latest rectangle
@@ -181,7 +181,7 @@ Tile downloads time out after 20 seconds and are retried up to 3 times with back
 The downloader includes a built-in stitcher powered by [libvips](https://www.libvips.org/). Unlike Photoshop or Pillow, libvips processes images in strips rather than loading everything into RAM, so it handles multi-gigapixel outputs without running out of memory.
 
 **To use:**
-1. Check **Stitch tiles into image after download** (visible above the Download button — only enabled for Directory output type)
+1. Open **Advanced options** and check **Stitch tiles into an image after download** (only enabled for Directory output type)
 2. Start the download as normal
 3. Once all tiles have downloaded, stitching begins automatically
 4. Progress is shown in the log panel; the button shows **STITCHING...** while it runs
@@ -201,7 +201,9 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 ## About and contact
 
-Arta Map Downloader version 1.0.0, by Arta Cyber Inc. (the *About* and *Contact us* links in the app show the same details).
+Arta Map Downloader version 1.0.0, by Arta Cyber Inc. (*Help & about* in the app shows the same details).
+
+Privacy: the location search sends the text you type to [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/), only when you press Enter or the search button, and map tiles are loaded from the providers you choose. The app itself sends nothing to Arta Cyber Inc.
 
 Arta Cyber Inc. is a small security and network engineering company in Ottawa. Cybersecurity is the main work, assessment, penetration testing and standards, across IT and OT alike; it also designs, maintains and supplies the networks it defends. Arta is Old Persian for truth and right order.
 

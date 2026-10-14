@@ -4,8 +4,6 @@ $(function() {
 
 	var map = null;
 	var draw = null;
-	var geocoder = null;
-	var bar = null;
 
 	// the download itself runs on the server (/api/job/*); the page only polls its status
 	var pollTimer = null;
@@ -50,6 +48,14 @@ $(function() {
 	// defaults for a fresh page; index.htm carries the same values so they show before this script runs
 	var DEFAULT_SOURCE = "ESRI World Imagery";
 	var DEFAULT_THREADS = 16;
+	var CUSTOM_SOURCE = "__custom";
+
+	// rough size estimate only: the average tile of a 71,190-tile ESRI imagery folder was about 15 KB
+	// (1,065,114,634 bytes / 71,190 tiles); a 2x tile merges four tiles, so it counts four times
+	var AVERAGE_TILE_KB = 15;
+
+	// brand accent for the region rectangle (site.css --bronze-ink, see style.css)
+	var ACCENT = "#7A5C39";
 
 	function api(type, url, data) {
 		var options = {
@@ -73,11 +79,13 @@ $(function() {
 		return fallback;
 	}
 
-	function initializeMap() {
+	function toast(text, ms) {
+		M.toast({html: $("<span></span>").text(text).html(), displayLength: ms || 4000});
+	}
 
-		// A Mapbox token is only required if you want the search/geocoder feature to work.
-		// Get a free token at https://account.mapbox.com/ and replace the empty string below.
-		mapboxgl.accessToken = '';
+	// ---------- map, base layers and map controls ----------
+
+	function initializeMap() {
 
 		map = new mapboxgl.Map({
 			container: 'map-view',
@@ -88,38 +96,103 @@ $(function() {
 						type: 'raster',
 						tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
 						tileSize: 256,
+						maxzoom: 19,
 						attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+					},
+					// satellite preview only; the download source is chosen separately in the card
+					'esri-imagery': {
+						type: 'raster',
+						tiles: ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+						tileSize: 256,
+						maxzoom: 19,
+						attribution: 'Imagery © Esri'
 					}
 				},
 				layers: [{
 					id: 'osm-tiles',
 					type: 'raster',
 					source: 'osm'
+				}, {
+					id: 'esri-tiles',
+					type: 'raster',
+					source: 'esri-imagery',
+					layout: {visibility: 'none'}
 				}]
 			},
 			center: [-73.983652, 40.755024],
 			zoom: 12
 		});
 
+		map.addControl(new mapboxgl.ScaleControl({maxWidth: 110, unit: 'metric'}), 'bottom-left');
+
 		// isStyleLoaded() stays false while base tiles load, so track the style load once
 		map.on('load', function() {
 			mapReady = true;
+			addHandleImages();
 			renderRegion();
+			drawGrid();
 			refreshCoverage();
+			showCoords(map.getCenter());
 		});
 
-		if (mapboxgl.accessToken) {
-			geocoder = new MapboxGeocoder({ accessToken: mapboxgl.accessToken });
-			map.addControl(geocoder);
+		map.on('mousemove', function(e) {
+			showCoords(e.lngLat);
+		});
+		map.on('moveend', function() {
+			if(!mouseOverMap) {
+				showCoords(map.getCenter());
+			}
+		});
+		var mouseOverMap = false;
+		$(map.getCanvasContainer()).on('mouseenter', function() { mouseOverMap = true; }).on('mouseleave', function() {
+			mouseOverMap = false;
+			showCoords(map.getCenter());
+		});
+	}
+
+	function showCoords(lngLat) {
+		var lat = lngLat.lat, lng = lngLat.lng;
+		$("#coords-readout").text(Math.abs(lat).toFixed(4) + "° " + (lat >= 0 ? "N" : "S") + ", " + Math.abs(lng).toFixed(4) + "° " + (lng >= 0 ? "E" : "W"));
+	}
+
+	function initializeMapControls() {
+
+		$("#basemap-toggle .toggle-btn").click(function() {
+			var satellite = $(this).attr("data-base") == "satellite";
+			$("#basemap-toggle .toggle-btn").removeClass("active").attr("aria-pressed", "false");
+			$(this).addClass("active").attr("aria-pressed", "true");
+			if(mapReady) {
+				map.setLayoutProperty('esri-tiles', 'visibility', satellite ? 'visible' : 'none');
+				map.setLayoutProperty('osm-tiles', 'visibility', satellite ? 'none' : 'visible');
+			}
+		});
+
+		$("#zoom-in-button").click(function() { map.zoomIn(); });
+		$("#zoom-out-button").click(function() { map.zoomOut(); });
+
+		$("#locate-button").click(function() {
+			if(!navigator.geolocation) {
+				toast("Your browser cannot share its location.");
+				return;
+			}
+			navigator.geolocation.getCurrentPosition(function(position) {
+				map.flyTo({center: [position.coords.longitude, position.coords.latitude], zoom: Math.max(map.getZoom(), 13)});
+			}, function() {
+				toast("Location is not available (permission denied or offline).");
+			}, {timeout: 10000});
+		});
+	}
+
+	// padding that keeps fitted areas clear of the card
+	function mapPadding() {
+		var panel = $("#panel");
+		if(window.innerWidth <= 760) {
+			return {top: 70, left: 30, right: 30, bottom: Math.round(panel.outerHeight()) + 30};
 		}
+		return {top: 70, left: 60, bottom: 60, right: Math.round(panel.outerWidth()) + 70};
 	}
 
 	function initializeMaterialize() {
-		$('select').formSelect();
-		$('.dropdown-trigger').dropdown({
-			constrainWidth: false,
-		});
-
 		// About / Contact: plain Materialize modals (Esc, backdrop click and Close all dismiss them)
 		M.Modal.init(document.querySelectorAll('.info-modal'), {});
 
@@ -128,78 +201,181 @@ $(function() {
 		});
 	}
 
+	// ---------- tile source pickers (a provider list plus an editable URL) ----------
+
 	function initializeSources() {
 
-		$(".source-list").each(function() {
-
-			var dropdown = $(this);
-			var target = $(dropdown.attr("data-input"));
+		$(".source-select").each(function() {
+			var select = $(this);
+			var input = $(select.attr("data-input"));
+			var urlRow = $(select.attr("data-url-row"));
+			var group = $("<optgroup></optgroup>");
 
 			for(var key in sources) {
-				var url = sources[key];
-
-				if(url == "") {
-					dropdown.append("<hr/>");
+				if(sources[key] == "") {
+					select.append(group);
+					group = $("<optgroup></optgroup>");
 					continue;
 				}
-
-				var item = $("<li><a></a></li>");
-				item.attr("data-url", url);
-				item.find("a").text(key);
-
-				item.click(function() {
-					var url = $(this).attr("data-url");
-					target.val(url);
-					M.updateTextFields();
-					syncSourceLabel(dropdown);
-				})
-
-				dropdown.append(item);
+				group.append($("<option></option>").attr("value", sources[key]).text(key));
 			}
-
-			target.on("input change", function() {
-				syncSourceLabel(dropdown);
+			select.append(group);
+			select.append($("<option></option>").attr("value", CUSTOM_SOURCE).text("Custom URL…"));
+			select.find("optgroup").each(function() {
+				var first = $(this).find("option").first().text();
+				$(this).attr("label", first.split(" ")[0] == "Open" ? "OpenStreetMap" : (first.indexOf("ESRI") == 0 ? "Other" : first.split(" ")[0]));
 			});
-			syncSourceLabel(dropdown);
+
+			select.on("change", function() {
+				if(select.val() == CUSTOM_SOURCE) {
+					urlRow.addClass("open");
+					input.focus().select();
+				} else {
+					input.val(select.val());
+				}
+			});
+
+			input.on("input change", function() {
+				syncSourceSelect(select);
+			});
+
+			syncSourceSelect(select);
+		});
+
+		$(".source-url-toggle").click(function() {
+			$($(this).attr("data-target")).toggleClass("open");
 		});
 	}
 
-	// show which provider the source box holds, and mark it in the dropdown
-	function syncSourceLabel(dropdown) {
-		var target = $(dropdown.attr("data-input"));
-		var value = $.trim(target.val());
-		var name = null;
-		for(var key in sources) {
-			if(sources[key] != "" && sources[key] == value) {
-				name = key;
-			}
-		}
-		dropdown.find("li").each(function() {
-			$(this).toggleClass("active", $(this).attr("data-url") == value);
-		});
-		// one short line in the field label: "Source: <provider>", or the plain label for a custom URL
-		var label = $(dropdown.attr("data-label")).empty();
-		if(name) {
-			label.append(document.createTextNode("Source: ")).append($("<span class='source-name'></span>").text(name));
-		} else {
-			label.text("Map Tile Source");
+	function syncSourceSelect(select) {
+		var input = $(select.attr("data-input"));
+		var value = $.trim(input.val());
+		var known = select.find("option").filter(function() { return this.value == value; }).length > 0;
+		select.val(known ? value : CUSTOM_SOURCE);
+		if(!known) {
+			$(select.attr("data-url-row")).addClass("open");
 		}
 	}
+
+	function initializeZoomSelects() {
+		$(".zoom-select").each(function() {
+			var select = $(this);
+			var max = select.attr("id").indexOf("resume") == 0 ? 24 : 22;
+			for(var z = 0; z <= max; z++) {
+				select.append($("<option></option>").attr("value", z).text(z));
+			}
+			select.val(select.attr("data-default"));
+		});
+	}
+
+	// ---------- location search (OpenStreetMap Nominatim, on Enter or the search button only) ----------
+
+	var lastSearchAt = 0;
+	var searchPending = null;
 
 	function initializeSearch() {
-		$("#search-form").submit(function(e) {
-			var location = $("#location-box").val();
-			if (geocoder) geocoder.query(location);
+		var input = $("#location-box");
 
+		$("#search-form").submit(function(e) {
 			e.preventDefault();
-		})
+			runSearch();
+		});
+
+		input.on("input", function() {
+			$("#search-clear").toggleClass("show", input.val() != "");
+		});
+
+		$("#search-clear").click(function() {
+			input.val("").focus();
+			$("#search-clear").removeClass("show");
+			$("#search-results").removeClass("open").empty();
+			$("#search-message").text("");
+		});
+
+		input.on("keydown", function(e) {
+			if(e.key == "Escape") {
+				$("#search-results").removeClass("open");
+			}
+		});
+
+		$(document).on("mousedown", function(e) {
+			if(!$(e.target).closest("#search-form").length) {
+				$("#search-results").removeClass("open");
+			}
+		});
 	}
+
+	function runSearch() {
+		var query = $.trim($("#location-box").val());
+		if(query == "") {
+			return;
+		}
+
+		// Nominatim's usage policy allows at most one request per second
+		var wait = 1000 - (Date.now() - lastSearchAt);
+		if(wait > 0) {
+			if(!searchPending) {
+				searchPending = setTimeout(function() { searchPending = null; runSearch(); }, wait);
+			}
+			return;
+		}
+		lastSearchAt = Date.now();
+
+		var message = $("#search-message").text("Searching...");
+		var results = $("#search-results").removeClass("open").empty();
+		var controller = window.AbortController ? new AbortController() : null;
+		var timer = setTimeout(function() { if(controller) controller.abort(); }, 10000);
+
+		fetch("https://nominatim.openstreetmap.org/search?format=json&limit=5&q=" + encodeURIComponent(query), {
+			headers: {"Accept-Language": navigator.language || "en"},
+			signal: controller ? controller.signal : undefined,
+		}).then(function(response) {
+			if(!response.ok) {
+				throw new Error("HTTP " + response.status);
+			}
+			return response.json();
+		}).then(function(places) {
+			clearTimeout(timer);
+			if(!places.length) {
+				message.text("No places found.");
+				return;
+			}
+			message.text("");
+			places.slice(0, 5).forEach(function(place) {
+				var item = $("<li></li>").text(place.display_name);
+				item.click(function() {
+					goToPlace(place);
+				});
+				results.append(item);
+			});
+			results.addClass("open");
+		}).catch(function() {
+			clearTimeout(timer);
+			message.text("Search is not available right now (offline or the service did not answer).");
+		});
+	}
+
+	function goToPlace(place) {
+		$("#search-results").removeClass("open");
+		$("#location-box").val(place.display_name);
+		$("#search-clear").addClass("show");
+		var box = (place.boundingbox || []).map(parseFloat);
+		if(box.length == 4 && box.every(function(v) { return !isNaN(v); })) {
+			map.fitBounds([[box[2], box[0]], [box[3], box[1]]], {padding: mapPadding(), maxZoom: 16});
+		} else {
+			map.flyTo({center: [parseFloat(place.lon), parseFloat(place.lat)], zoom: 14});
+		}
+	}
+
+	// ---------- advanced options ----------
 
 	function initializeMoreOptions() {
 
 		$("#more-options-toggle").click(function() {
-			$("#more-options").toggle();
-		})
+			var open = !$("#more-options").hasClass("open");
+			$("#more-options").toggleClass("open", open);
+			$(this).attr("aria-expanded", open ? "true" : "false");
+		});
 
 		var outputFileBox = $("#output-file-box")
 
@@ -226,6 +402,10 @@ $(function() {
 
 		updateStitchCheckboxState();
 
+		$("#zoom-from-box, #zoom-to-box, #output-scale").on("change", function() {
+			updateRegionInfo();
+			drawGrid();
+		});
 	}
 
 	function pollStitchStatus() {
@@ -261,6 +441,8 @@ $(function() {
 		});
 	}
 
+	// ---------- drawing the region ----------
+
 	function initializeRectangleTool() {
 
 		var modes = MapboxDraw.modes;
@@ -292,8 +474,17 @@ $(function() {
 			startDrawing();
 		})
 
-		$("#zoom-from-box, #zoom-to-box").on("change keyup", updateEstimate);
+		$("#area-edit").click(function() {
+			fitRegion();
+			toast("Drag the square corner or edge handles to resize the area, or the centre dot to move it.", 5000);
+		});
 
+		$("#area-clear").click(function() {
+			draw.deleteAll();
+			draw.changeMode('simple_select');
+			removeGrid();
+			setRegion(null, false);
+		});
 	}
 
 	function startDrawing() {
@@ -303,7 +494,7 @@ $(function() {
 		draw.changeMode('draw_rectangle');
 
 		M.Toast.dismissAll();
-		M.toast({html: 'Click two points on the map to make a rectangle.', displayLength: 7000})
+		toast('Click two points on the map to make a rectangle.', 7000);
 	}
 
 	// ---------- editable region rectangle ----------
@@ -312,14 +503,17 @@ $(function() {
 	var editDrag = null;
 	var dragPanDisabled = false;
 	var regionTimer = null;
+	var areaMarker = null;
 	var MAX_LAT = 85.0511287798;
 
 	function setRegion(bounds, notify) {
 		region = bounds ? normalizeRegion(bounds) : null;
 		renderRegion();
-		updateEstimate();
+		updateRegionInfo();
 		if(notify) {
 			regionChanged();
+		} else {
+			drawGrid();
 		}
 	}
 
@@ -329,6 +523,45 @@ $(function() {
 		var s = Math.max(-MAX_LAT, Math.min(MAX_LAT, Math.min(r[1], r[3])));
 		var n = Math.max(-MAX_LAT, Math.min(MAX_LAT, Math.max(r[1], r[3])));
 		return [w, s, e, n];
+	}
+
+	// square handles for corners and edges, a round dot to move: drawn once into the map's image store
+	function makeImage(size, paint) {
+		var canvas = document.createElement("canvas");
+		canvas.width = size;
+		canvas.height = size;
+		var ctx = canvas.getContext("2d");
+		paint(ctx, size);
+		return ctx.getImageData(0, 0, size, size);
+	}
+
+	function addHandleImages() {
+		var square = function(size) {
+			return makeImage(size, function(ctx, s) {
+				ctx.fillStyle = "#ffffff";
+				ctx.fillRect(1, 1, s - 2, s - 2);
+				ctx.strokeStyle = ACCENT;
+				ctx.lineWidth = 2;
+				ctx.strokeRect(2, 2, s - 4, s - 4);
+			});
+		};
+		if(!map.hasImage("handle-corner")) {
+			map.addImage("handle-corner", square(14));
+		}
+		if(!map.hasImage("handle-edge")) {
+			map.addImage("handle-edge", square(10));
+		}
+		if(!map.hasImage("handle-move")) {
+			map.addImage("handle-move", makeImage(18, function(ctx, s) {
+				ctx.beginPath();
+				ctx.arc(s / 2, s / 2, s / 2 - 2, 0, Math.PI * 2);
+				ctx.fillStyle = ACCENT;
+				ctx.fill();
+				ctx.lineWidth = 2;
+				ctx.strokeStyle = "#ffffff";
+				ctx.stroke();
+			}));
+		}
 	}
 
 	function renderRegion() {
@@ -350,6 +583,8 @@ $(function() {
 		}
 		var data = {type: 'FeatureCollection', features: features};
 
+		updateAreaPill();
+
 		var source = map.getSource('region-edit');
 		if(source) {
 			source.setData(data);
@@ -357,14 +592,56 @@ $(function() {
 		}
 
 		map.addSource('region-edit', {type: 'geojson', data: data});
-		map.addLayer({id: 'region-fill', type: 'fill', source: 'region-edit', filter: ['==', 'role', 'box'], paint: {'fill-color': '#ff9f1a', 'fill-opacity': 0.06}});
-		map.addLayer({id: 'region-line', type: 'line', source: 'region-edit', filter: ['==', 'role', 'box'], paint: {'line-color': '#fa8231', 'line-width': 2}});
-		map.addLayer({id: 'region-handles', type: 'circle', source: 'region-edit', filter: ['!=', 'role', 'box'], paint: {
-			'circle-radius': ['match', ['get', 'role'], 'move', 8, 'corner', 6, 5],
-			'circle-color': ['match', ['get', 'role'], 'move', '#fa8231', '#ffffff'],
-			'circle-stroke-color': '#fa8231',
-			'circle-stroke-width': 2,
+		map.addLayer({id: 'region-fill', type: 'fill', source: 'region-edit', filter: ['==', 'role', 'box'], paint: {'fill-color': ACCENT, 'fill-opacity': 0.08}});
+		map.addLayer({id: 'region-casing', type: 'line', source: 'region-edit', filter: ['==', 'role', 'box'], paint: {'line-color': '#ffffff', 'line-width': 5, 'line-opacity': 0.85}});
+		map.addLayer({id: 'region-line', type: 'line', source: 'region-edit', filter: ['==', 'role', 'box'], paint: {'line-color': ACCENT, 'line-width': 2.5}});
+		map.addLayer({id: 'region-handles', type: 'symbol', source: 'region-edit', filter: ['!=', 'role', 'box'], layout: {
+			'icon-image': ['match', ['get', 'role'], 'corner', 'handle-corner', 'edge', 'handle-edge', 'handle-move'],
+			'icon-allow-overlap': true,
+			'icon-ignore-placement': true,
 		}});
+	}
+
+	function updateAreaPill() {
+		if(!region || !mapReady) {
+			if(areaMarker) {
+				areaMarker.remove();
+				areaMarker = null;
+			}
+			return;
+		}
+		var text = "Selected area · " + formatArea(regionAreaKm2());
+		if(!areaMarker) {
+			var element = $("<div class='area-pill'></div>")[0];
+			areaMarker = new mapboxgl.Marker({element: element, anchor: 'bottom', offset: [0, -10]});
+			areaMarker.setLngLat([(region[0] + region[2]) / 2, region[3]]).addTo(map);
+		}
+		$(areaMarker.getElement()).text(text);
+		areaMarker.setLngLat([(region[0] + region[2]) / 2, region[3]]);
+	}
+
+	// area of a lat/lng rectangle on a sphere: R^2 * dLambda * (sin(phi2) - sin(phi1))
+	function regionAreaKm2() {
+		var R = 6371.0088;
+		var rad = Math.PI / 180;
+		return R * R * Math.abs(region[2] - region[0]) * rad * Math.abs(Math.sin(region[3] * rad) - Math.sin(region[1] * rad));
+	}
+
+	function formatArea(km2) {
+		if(km2 < 0.1) {
+			return Math.round(km2 * 1000000).toLocaleString() + " m²";
+		}
+		return km2.toLocaleString(undefined, {maximumFractionDigits: km2 < 100 ? 1 : 0}) + " km²";
+	}
+
+	function formatSize(kb) {
+		if(kb < 1024) {
+			return "~" + Math.round(kb) + " KB";
+		}
+		if(kb < 1024 * 1024) {
+			return "~" + (kb / 1024).toLocaleString(undefined, {maximumFractionDigits: kb < 10240 ? 1 : 0}) + " MB";
+		}
+		return "~" + (kb / 1024 / 1024).toLocaleString(undefined, {maximumFractionDigits: 1}) + " GB";
 	}
 
 	// hit test in screen pixels, so it does not depend on what the map has rendered yet
@@ -424,7 +701,7 @@ $(function() {
 			}
 			region = normalizeRegion(r);
 			renderRegion();
-			updateEstimate();
+			updateRegionInfo();
 			// light update while dragging: the table follows, one request in flight at a time
 			if(dataset && $("#resume-sidebar").is(":visible")) {
 				requestStats();
@@ -444,6 +721,7 @@ $(function() {
 		}
 		e.preventDefault();
 		setDragPan(false);
+		removeGrid();
 		editDrag = {mode: hit, start: e.lngLat, startRegion: region.slice()};
 	}
 
@@ -456,19 +734,29 @@ $(function() {
 		regionChanged();
 	}
 
-	function updateEstimate() {
-		var box = $("#region-estimate");
+	// the "area selected" row, the badge on the map and the tiles / size estimate
+	function updateRegionInfo() {
 		var minZoom = getMinZoom();
 		var maxZoom = getMaxZoom();
+
+		$("#area-row").toggleClass("show", region != null);
+		updateAreaPill();
+
 		if(!region) {
-			box.text("");
+			$("#stat-tiles").text("–");
+			$("#stat-size").text("–");
 			return;
 		}
+
+		$("#area-size").text(formatArea(regionAreaKm2()));
+
 		if(isNaN(minZoom) || isNaN(maxZoom)) {
-			box.text("Enter zoom levels");
 			return;
 		}
-		box.text(countTiles(minZoom, maxZoom).toLocaleString() + " tiles at zoom " + minZoom + "-" + maxZoom + ". Drag the corners, edges or the centre dot to change it.");
+		var tiles = countTiles(minZoom, maxZoom);
+		var scale = parseInt($("#output-scale").val()) == 2 ? 4 : 1;
+		$("#stat-tiles").text(tiles.toLocaleString());
+		$("#stat-size").text(formatSize(tiles * AVERAGE_TILE_KB * scale));
 	}
 
 	function initializeGridPreview() {
@@ -491,10 +779,10 @@ $(function() {
 		var content = "X, Y, Z<br/><b>" + x + ", " + y + ", " + maxZoom + "</b><hr/>";
 		content += "Lat, Lng<br/><b>" + e.lngLat.lat + ", " + e.lngLat.lng + "</b>";
 
-        new mapboxgl.Popup()
-            .setLngLat(e.lngLat)
-            .setHTML(content)
-            .addTo(map);
+		new mapboxgl.Popup()
+			.setLngLat(e.lngLat)
+			.setHTML(content)
+			.addTo(map);
 
 	}
 
@@ -568,17 +856,18 @@ $(function() {
 		removeLayer("grid-preview");
 	}
 
-	function previewGrid() {
-
-		if(!hasRegion()) {
-			M.toast({html: 'You need to select a region first.', displayLength: 3000})
+	// tile grid at the deepest zoom inside the rectangle: (columns + rows) lines, thinned past 400
+	function drawGrid() {
+		removeGrid();
+		if(!hasRegion() || !mapReady || $("#download-sidebar").is(":visible")) {
 			return;
 		}
-
 		var maxZoom = getMaxZoom();
+		if(isNaN(maxZoom)) {
+			return;
+		}
 		var r = getTileRange(maxZoom);
 
-		// a grid is (columns + rows) lines, not one polygon per tile
 		var lines = [];
 		var north = tile2lat(r.y0, maxZoom);
 		var south = tile2lat(r.y1 + 1, maxZoom);
@@ -592,16 +881,6 @@ $(function() {
 		for(var y = r.y0; y <= r.y1 + 1; y += step) {
 			lines.push([[west, tile2lat(y, maxZoom)], [east, tile2lat(y, maxZoom)]]);
 		}
-		lines.push([[west, north], [east, north], [east, south], [west, south], [west, north]]);
-
-		removeGrid();
-
-		var totalTiles = countTiles(getMinZoom(), getMaxZoom());
-		M.toast({html: 'Total ' + totalTiles.toLocaleString() + ' tiles in the region.', displayLength: 5000})
-
-		if(!mapReady) {
-			return;
-		}
 
 		map.addLayer({
 			'id': "grid-preview",
@@ -612,11 +891,25 @@ $(function() {
 			},
 			'layout': {},
 			'paint': {
-				"line-color": "#fa8231",
-				"line-width": step > 1 ? 1 : 3,
+				"line-color": ACCENT,
+				"line-opacity": 0.45,
+				"line-width": 1,
 			}
-		});
+		}, map.getLayer("region-fill") ? "region-fill" : undefined);
+	}
 
+	function previewGrid() {
+
+		if(!hasRegion()) {
+			toast('You need to select a region first.', 3000);
+			return;
+		}
+
+		drawGrid();
+		fitRegion();
+
+		var totalTiles = countTiles(getMinZoom(), getMaxZoom());
+		toast('Total ' + totalTiles.toLocaleString() + ' tiles in the region; the grid shows zoom ' + getMaxZoom() + '.', 5000);
 	}
 
 	function removeLayer(id) {
@@ -628,24 +921,15 @@ $(function() {
 		}
 	}
 
+	// ---------- download in progress ----------
+
 	function initializeDownloader() {
-
-		bar = new ProgressBar.Circle($('#progress-radial').get(0), {
-			strokeWidth: 12,
-			easing: 'easeOut',
-			duration: 200,
-			trailColor: '#eee',
-			trailWidth: 1,
-			from: {color: '#0fb9b1', a:0},
-			to: {color: '#20bf6b', a:1},
-			svgStyle: null,
-			step: function(state, circle) {
-				circle.path.setAttribute('stroke', state.color);
-			}
-		});
-
 		$("#download-button").click(startDownloading)
 		$("#stop-button").click(stopDownloading)
+	}
+
+	function setStopButton(label, finished, disabled) {
+		$("#stop-button").text(label).toggleClass("finish", !!finished).prop("disabled", !!disabled);
 	}
 
 	function showDownloadSidebar() {
@@ -653,7 +937,7 @@ $(function() {
 		$("#resume-sidebar").hide();
 		$("#download-sidebar").show();
 		$(".tile-strip").html("");
-		$("#stop-button").html("STOP").prop("disabled", false);
+		setStopButton("Stop", false, false);
 		$("#download-phase-title").text("Downloading tiles");
 		$("#download-phase-hint").text("Please wait...");
 		lastRecent = "";
@@ -667,7 +951,7 @@ $(function() {
 	async function startDownloading() {
 
 		if(!hasRegion()) {
-			M.toast({html: 'You need to select a region first.', displayLength: 3000})
+			toast('You need to select a region first.', 3000);
 			return;
 		}
 
@@ -698,7 +982,7 @@ $(function() {
 			setCoverageDataset(result.ds);
 			startPolling();
 		}).fail(function(xhr) {
-			M.toast({html: apiError(xhr, 'Could not start the download.'), displayLength: 6000});
+			toast(apiError(xhr, 'Could not start the download.'), 6000);
 		});
 	}
 
@@ -742,24 +1026,21 @@ $(function() {
 
 		updateProgress(status.done || 0, status.missingAtStart || 0);
 
-		var hint = "";
+		var hint = [];
 		if(status.total) {
-			hint = (status.total - status.missingAtStart).toLocaleString() + " of " + status.total.toLocaleString() + " tiles were already on disk";
+			hint.push((status.total - status.missingAtStart).toLocaleString() + " of " + status.total.toLocaleString() + " tiles were already on disk");
 		}
 		if(status.rate) {
-			hint += "<br/>" + status.rate + " tiles/s";
-			if(status.eta) {
-				hint += ", about " + formatDuration(status.eta) + " left";
-			}
+			hint.push(status.rate + " tiles/s" + (status.eta ? ", about " + formatDuration(status.eta) + " left" : ""));
 		}
 		if(status.failed) {
-			hint += "<br/>" + status.failed.toLocaleString() + " failed in this run";
+			hint.push(status.failed.toLocaleString() + " failed in this run");
 		}
 		if(status.throttled > 0) {
-			hint += "<br/>Rate limited, pausing " + status.throttled + "s";
+			hint.push("Rate limited, pausing " + status.throttled + "s");
 		}
-		if(hint) {
-			$("#download-phase-hint").html(hint);
+		if(hint.length) {
+			$("#download-phase-hint").html(hint.map(function(h) { return $("<span></span>").text(h).html(); }).join("<br/>"));
 		}
 
 		var recentKey = JSON.stringify(status.recent || []);
@@ -770,7 +1051,7 @@ $(function() {
 			var recent = (status.recent || []).slice().reverse();
 			for(var j = 0; j < recent.length; j++) {
 				var t = recent[j];
-				strip.append($("<img/>").attr('src', "/api/tiles/" + t[0] + "/" + t[1] + "/" + t[2] + "?ds=" + status.ds));
+				strip.append($("<img/>").attr('alt', '').attr('src', "/api/tiles/" + t[0] + "/" + t[1] + "/" + t[2] + "?ds=" + status.ds));
 			}
 		}
 
@@ -795,14 +1076,14 @@ $(function() {
 
 		if(status.state == "stopped") {
 			$("#download-phase-title").text("Stopped");
-			$("#stop-button").html("BACK").prop("disabled", false);
+			setStopButton("Back", true, false);
 			return;
 		}
 
 		if(status.state == "error") {
 			$("#download-phase-title").text("Error");
 			logItemRaw("Error: " + status.error);
-			$("#stop-button").html("CLOSE").prop("disabled", false);
+			setStopButton("Close", true, false);
 			return;
 		}
 
@@ -810,7 +1091,7 @@ $(function() {
 		$("#download-phase-title").text(status.failedTotal ? "Finished with failures" : "Finished");
 
 		if ($("#stitch-checkbox").is(":checked") && status.kind == "directory" && !$("#resume-sidebar").data("from-resume")) {
-			$("#stop-button").html("STITCHING...").prop("disabled", true);
+			setStopButton("Stitching...", true, true);
 			$("#download-phase-title").text("Stitching tiles");
 			$("#download-phase-hint").text("Building image from tiles, please wait...");
 
@@ -833,19 +1114,18 @@ $(function() {
 			await pollStitchStatus();
 
 			$("#download-phase-title").text("Finished");
-			$("#stop-button").html("FINISH").prop("disabled", false);
-		} else {
-			$("#stop-button").html("FINISH").prop("disabled", false);
 		}
+		setStopButton("Finish", true, false);
 	}
+
+	var RING = 2 * Math.PI * 52;
 
 	function updateProgress(value, total) {
 		var progress = total > 0 ? value / total : (finishedState ? 1 : 0);
+		progress = Math.min(1, progress);
 
-		// set, not animate: progressbar.js leaves an unhandled promise rejection every time a running animation is replaced
-		bar.set(Math.min(1, progress));
-		bar.setText(Math.round(progress * 100) + '<span>%</span>');
-
+		$("#progress-ring-value").css("stroke-dashoffset", RING * (1 - progress));
+		$("#progress-percent").text(Math.round(progress * 100));
 		$("#progress-subtitle").html(value.toLocaleString() + " <span>out of</span> " + total.toLocaleString())
 	}
 
@@ -867,7 +1147,7 @@ $(function() {
 	function stopDownloading() {
 
 		if(finishedState == null) {
-			$("#stop-button").html("STOPPING...").prop("disabled", true);
+			setStopButton("Stopping...", false, true);
 			api("post", "/api/job/stop", {});
 			return;
 		}
@@ -883,6 +1163,7 @@ $(function() {
 		} else {
 			$("#main-sidebar").show();
 			clearCoverage();
+			drawGrid();
 		}
 		finishedState = null;
 	}
@@ -892,14 +1173,19 @@ $(function() {
 	function initializeResume() {
 
 		$("#open-existing-button").click(function() {
+			if($("#download-sidebar").is(":visible")) {
+				toast("A download is shown; finish or go back first.");
+				return;
+			}
 			showResumeSidebar();
 		});
 
-		$("#resume-close-button").click(function() {
+		$("#resume-close-button, #resume-back").click(function() {
 			$("#resume-sidebar").hide().data("from-resume", false);
 			$("#main-sidebar").show();
 			clearCoverage();
 			dataset = null;
+			drawGrid();
 		});
 
 		$("#open-path-form").submit(function(e) {
@@ -911,7 +1197,7 @@ $(function() {
 			openDataset({path: path});
 		});
 
-		$("#resume-zoom-from-box, #resume-zoom-to-box").on("change keyup", scheduleStats);
+		$("#resume-zoom-from-box, #resume-zoom-to-box").on("change", scheduleStats);
 		// the overlay shows the deepest zoom being downloaded unless picked by hand
 		$("#resume-zoom-to-box").on("change", function() {
 			var zooms = getResumeZooms();
@@ -938,21 +1224,22 @@ $(function() {
 		$("#main-sidebar").hide();
 		$("#download-sidebar").hide();
 		$("#resume-sidebar").show().data("from-resume", true);
+		removeGrid();
 		loadDatasetList();
 	}
 
 	function loadDatasetList() {
 		var list = $("#dataset-list");
-		list.html("<div class='hints'>Loading...</div>");
+		list.html("<div class='hint'>Loading...</div>");
 		api("get", "/api/datasets").done(function(result) {
 			list.html("");
 			$("#output-root").text(result.outputDirectory);
 			if(result.items.length == 0) {
-				list.html("<div class='hints'>No folders in the output directory yet.</div>");
+				list.html("<div class='hint'>No folders in the output directory yet.</div>");
 			}
 			for(var i = 0; i < result.items.length; i++) {
 				var item = result.items[i];
-				var row = $("<a class='collection-item dataset-item' href='javascript:void(0)'></a>");
+				var row = $("<a class='dataset-item' href='javascript:void(0)'></a>");
 				var title = $("<b></b>").text(item.name);
 				var info = $("<div class='dataset-info-line'></div>").text(
 					item.tiles.toLocaleString() + " tiles" +
@@ -968,7 +1255,7 @@ $(function() {
 			}
 		}).fail(function(xhr) {
 			list.html("");
-			M.toast({html: apiError(xhr, 'Could not list the output folder.'), displayLength: 5000});
+			toast(apiError(xhr, 'Could not list the output folder.'), 5000);
 		});
 	}
 
@@ -981,7 +1268,7 @@ $(function() {
 			showDataset(result);
 		}).fail(function(xhr) {
 			$("#dataset-loading").hide();
-			M.toast({html: apiError(xhr, 'Could not open that folder.'), displayLength: 6000});
+			toast(apiError(xhr, 'Could not open that folder.'), 6000);
 		});
 	}
 
@@ -1003,7 +1290,7 @@ $(function() {
 		if(result.invalidFiles) {
 			notes.push(result.invalidFiles.toLocaleString() + " empty or broken tile files count as missing");
 		}
-		$("#dataset-notes").html(notes.map(function(n) { return $("<div></div>").text(n).html(); }).join("<br/>"));
+		$("#dataset-notes").empty().append(notes.map(function(n) { return $("<div></div>").text(n); }));
 
 		// a folder with no recorded source gets the default provider pre-filled, and the notes say so
 		$("#resume-source-box").val(result.source || sources[DEFAULT_SOURCE]).trigger("change");
@@ -1013,7 +1300,6 @@ $(function() {
 		$("#resume-zoom-from-box").val(result.minZoom != null ? result.minZoom : 0);
 		$("#resume-zoom-to-box").val(result.maxZoom != null ? result.maxZoom : 0);
 		$("#resume-scale").text(result.outputScale + "x");
-		M.updateTextFields();
 
 		var zoomSelect = $("#coverage-zoom");
 		zoomSelect.html("");
@@ -1033,6 +1319,7 @@ $(function() {
 
 		draw.deleteAll();
 		setRegion(result.region ? result.region.bounds : null, false);
+		removeGrid();
 
 		setCoverageDataset(result.ds);
 		fitRegion();
@@ -1041,7 +1328,7 @@ $(function() {
 
 	function fitRegion() {
 		if(hasRegion()) {
-			map.fitBounds(getBounds(), {padding: 40, animate: false});
+			map.fitBounds(getBounds(), {padding: mapPadding(), animate: false});
 		}
 	}
 
@@ -1056,6 +1343,8 @@ $(function() {
 			if(dataset && $("#resume-sidebar").is(":visible")) {
 				requestStats();
 				refreshCoverage();
+			} else {
+				drawGrid();
 			}
 		}, 300);
 	}
@@ -1134,7 +1423,7 @@ $(function() {
 			}
 			$("#resume-button").prop("disabled", t.missing == 0).text(t.missing == 0 ? "Nothing to resume" : "Resume (" + t.missing.toLocaleString() + " tiles)");
 		}).fail(function(xhr) {
-			M.toast({html: apiError(xhr, 'Could not count the tiles.'), displayLength: 5000});
+			toast(apiError(xhr, 'Could not count the tiles.'), 5000);
 		});
 	}
 
@@ -1145,11 +1434,11 @@ $(function() {
 		var zooms = getResumeZooms();
 		var source = $("#resume-source-box").val().trim();
 		if(source == "" && mode != "failed") {
-			M.toast({html: 'Enter the map tile source this folder was downloaded from.', displayLength: 5000});
+			toast('Enter the map tile source this folder was downloaded from.', 5000);
 			return;
 		}
 		if(zooms == null || !hasRegion()) {
-			M.toast({html: 'Set the zoom levels and a region first.', displayLength: 5000});
+			toast('Set the zoom levels and a region first.', 5000);
 			return;
 		}
 		startJob({
@@ -1243,12 +1532,15 @@ $(function() {
 	}
 
 	initializeMaterialize();
+	initializeZoomSelects();
 	initializeSources();
 	initializeMap();
+	initializeMapControls();
 	initializeSearch();
 	initializeRectangleTool();
 	initializeGridPreview();
 	initializeMoreOptions();
 	initializeDownloader();
 	initializeResume();
+	updateRegionInfo();
 });

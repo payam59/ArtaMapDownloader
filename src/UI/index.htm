@@ -1,28 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 	<title>Arta Map Downloader</title>
 	<link rel="icon" type="image/svg+xml" href="brand/favicon.svg" />
 	<link rel="icon" type="image/png" sizes="32x32" href="brand/favicon-32.png" />
 	<link rel="apple-touch-icon" sizes="180x180" href="brand/favicon-180.png" />
 	<meta charset="utf-8"/>
-    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+	<meta name='viewport' content='width=device-width, initial-scale=1' />
 
-	<!-- TODO replace jquery with react -->
 	<script src="jquery.min.js"></script>
 
-    <script src='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
+	<script src='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
+	<link href='https://api.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
 
-	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.3.0/mapbox-gl-geocoder.min.js'></script>
 	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.js'></script>
 	<script src='mapbox-gl-draw-rectangle-mode.min.js'></script>
 	<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.css' type='text/css'/>
 
-	<script src='https://cdn.jsdelivr.net/npm/progressbar.js@1.1.0/dist/progressbar.min.js'></script>
-
-
-	<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i" rel="stylesheet">
+	<!-- Materialize is kept for the About / Contact modals and the toasts only -->
 	<script src="materialize/js/materialize.min.js"></script>
 	<link href='materialize/css/materialize.min.css' rel='stylesheet' type='text/css' />
 
@@ -32,284 +27,294 @@
 </head>
 <body>
 
-	<div id='max-height'>
-
+	<!-- ===== map, full bleed, with its own floating controls ===== -->
+	<div id='map-wrap'>
 		<div id='map-view'></div>
 
+		<div class='map-toggle' id='basemap-toggle' role='group' aria-label='Base map'>
+			<button type='button' class='toggle-btn active' data-base='street'>
+				<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14'/></svg>
+				<span>Street map</span>
+			</button>
+			<button type='button' class='toggle-btn' data-base='satellite'>
+				<svg viewBox='0 0 24 24' aria-hidden='true'><path d='m12 3 9 5-9 5-9-5 9-5zM3 13l9 5 9-5'/></svg>
+				<span>Satellite</span>
+			</button>
+		</div>
+
+		<div class='map-buttons' id='map-buttons'>
+			<button type='button' id='zoom-in-button' title='Zoom in' aria-label='Zoom in'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 5v14M5 12h14'/></svg></button>
+			<button type='button' id='zoom-out-button' title='Zoom out' aria-label='Zoom out'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M5 12h14'/></svg></button>
+			<button type='button' id='locate-button' title='Go to my location' aria-label='Go to my location'><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='1.5'/><path d='M12 2v4M12 18v4M2 12h4M18 12h4'/></svg></button>
+		</div>
+
+		<div class='coords-readout' id='coords-readout'></div>
 	</div>
 
-	<div class='sidebar' id='main-sidebar'>
+	<!-- ===== the control card: one header, three views ===== -->
+	<aside class='panel' id='panel'>
 
-		<div class='brand-header'>
-			<a class='brand-company' href='https://www.artacyber.com' target='_blank' rel='noopener'><img src='brand/icon-primary.svg' alt='' width='20' height='20'/><span>Arta Cyber Inc.</span></a>
-			<div class='brand-app-name'>Arta Map Downloader</div>
-			<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div>
-		</div>
+		<header class='panel-header'>
+			<a class='panel-brand' href='https://www.artacyber.com' target='_blank' rel='noopener'>
+				<img src='brand/icon-primary.svg' alt='' width='34' height='34'/>
+				<span class='panel-brand-text'>
+					<span class='panel-company'>Arta Cyber Inc.</span>
+					<span class='panel-product'>Map Downloader</span>
+				</span>
+			</a>
+			<a href='javascript:void(0)' class='panel-header-link' id='open-existing-button'>
+				<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z'/></svg>
+				<span>Open existing folder</span>
+			</a>
+		</header>
 
-		<div class='center-align resume-entry'>
-			<a class="waves-effect waves-light z-depth-0 btn-small blue-grey lighten-1" id='open-existing-button'>Resume / open existing folder</a>
-		</div>
+		<!-- ----- main view ----- -->
+		<section class='view' id='main-sidebar'>
+			<div class='view-body'>
 
-		<div class='step-number'>
-			1
-		</div>
-		<div class="step-title">
-			Search an Area
-		</div>
-
-		<form id='search-form' class='sidebar-section row'>
-			<div class="input-field col s12">
-				<input id="location-box" type="text" value="New York" />
-				<label for="location-box">Enter a location</label>
-			</div>
-		</form>
-
-
-		<div class='step-number'>
-			2
-		</div>
-		<div class="step-title">
-			Select a Region
-		</div>
-
-		<div class='center-align sidebar-section'>
-			<p>
-				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='rectangle-draw-button'>Draw a rectangle</a></p><p class='hints region-estimate' id='region-estimate'>
-			</p>
-		</div>
-
-		<div class='step-number'>
-			3
-		</div>
-		<div class="step-title">
-			Configure
-		</div>
-
-		<div class='sidebar-section'>
-			<div class="row">
-				<div class="input-field col s6">
-					<input id="zoom-from-box" type="text" value='15'/>
-					<label for="zoom-from-box" class="active">Zoom from:</label>
+				<div class='step'>
+					<div class='step-head'><span class='step-num'>1</span><h2>Find an area</h2></div>
+					<form id='search-form' class='search-box' autocomplete='off'>
+						<button type='submit' class='search-go' title='Search' aria-label='Search'><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='11' cy='11' r='6.5'/><path d='m16 16 4.5 4.5'/></svg></button>
+						<input id='location-box' class='browser-default' type='text' placeholder='Search a place, e.g. New York, NY' aria-label='Search a place'/>
+						<button type='button' class='search-clear' id='search-clear' title='Clear' aria-label='Clear search'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M6 6l12 12M18 6 6 18'/></svg></button>
+						<ul class='search-results' id='search-results'></ul>
+					</form>
+					<div class='search-message' id='search-message'></div>
 				</div>
-				<div class="input-field col s6">
-					<input id="zoom-to-box" type="text" value='15'/>
-					<label for="zoom-to-box" class="active">Zoom to:</label>
+
+				<div class='step'>
+					<div class='step-head'><span class='step-num'>2</span><h2>Select a region</h2></div>
+					<button type='button' class='btn-outline full' id='rectangle-draw-button'>
+						<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14'/></svg>
+						<span>Draw rectangle</span>
+					</button>
+					<div class='area-row' id='area-row'>
+						<svg class='area-check' viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='10'/><path d='m7.5 12.5 3 3 6-6.5'/></svg>
+						<span class='area-text'>Area selected &middot; <b id='area-size'></b></span>
+						<a href='javascript:void(0)' id='area-edit'>Edit</a>
+						<a href='javascript:void(0)' id='area-clear'>Clear</a>
+					</div>
 				</div>
-			</div>
 
+				<div class='step'>
+					<div class='step-head'><span class='step-num'>3</span><h2>Configure download</h2></div>
 
-			<div class="row">
-				<div class="input-field col s10">
-					<input id="source-box" type="text" value='https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'>
-					<label for="source-box" class='source-label'><span id='source-name'>Map Tile Source</span></label>
+					<div class='field'>
+						<div class='field-label'><label for='source-select'>Map source</label><a href='javascript:void(0)' class='field-link source-url-toggle' data-target='#source-url-row'>Custom URL</a></div>
+						<div class='select-wrap with-icon'>
+							<svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'/></svg>
+							<select id='source-select' class='browser-default source-select' data-input='#source-box' data-url-row='#source-url-row'></select>
+						</div>
+						<div class='url-row' id='source-url-row'>
+							<input id='source-box' class='browser-default' type='text' aria-label='Tile URL' value='https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'/>
+							<div class='hint'>Any tile URL with {x}, {y}, {z} or {quad}.</div>
+						</div>
+					</div>
+
+					<div class='field-pair'>
+						<div class='field'>
+							<label for='zoom-from-box'>Zoom from</label>
+							<div class='select-wrap'><select id='zoom-from-box' class='browser-default zoom-select' data-default='15'></select></div>
+						</div>
+						<div class='field'>
+							<label for='zoom-to-box'>Zoom to</label>
+							<div class='select-wrap'><select id='zoom-to-box' class='browser-default zoom-select' data-default='15'></select></div>
+						</div>
+					</div>
+
+					<div class='field'>
+						<label for='output-scale'>Output scale</label>
+						<div class='select-wrap'>
+							<select id='output-scale' class='browser-default'>
+								<option value='1'>1&times;</option>
+								<option value='2'>2&times; (high resolution, 512 px tiles)</option>
+							</select>
+						</div>
+					</div>
+
+					<button type='button' class='disclosure' id='more-options-toggle' aria-expanded='false' aria-controls='more-options'>
+						<svg viewBox='0 0 24 24' aria-hidden='true'><path d='m6 9 6 6 6-6'/></svg>
+						<span>Advanced options</span>
+					</button>
+					<div id='more-options' class='advanced'>
+						<div class='field'>
+							<label for='parallel-threads-box'>Parallel downloads</label>
+							<input id='parallel-threads-box' class='browser-default' type='number' min='1' max='64' value='16'/>
+						</div>
+						<div class='field'>
+							<label for='output-type'>Output type</label>
+							<div class='select-wrap'>
+								<select id='output-type' class='browser-default'>
+									<option value='directory'>Directory (one file per tile)</option>
+									<option value='mbtiles'>MBTiles</option>
+									<option value='repo'>Repo</option>
+								</select>
+							</div>
+						</div>
+						<div class='field'>
+							<label for='output-directory-box'>Output directory</label>
+							<input id='output-directory-box' class='browser-default' type='text' value='{timestamp}'/>
+						</div>
+						<div class='field'>
+							<label for='output-file-box'>File name format</label>
+							<input id='output-file-box' class='browser-default' type='text' value='{z}/{x}/{y}.png'/>
+						</div>
+						<div class='field' id='stitch-option'>
+							<label class='check'>
+								<input type='checkbox' id='stitch-checkbox' />
+								<span>Stitch tiles into an image after download</span>
+							</label>
+						</div>
+					</div>
 				</div>
-				<div class="input-field col s2">
-					<a class='waves-effect waves-light btn-small blue-grey lighten-2 z-depth-0 dropdown-trigger' id='source-select' href='#' data-target='sources'>⯆</a>
 
-					<ul id='sources' class='dropdown-content source-list' data-input='#source-box' data-label='#source-name'>
-					</ul>
-				</div>
-			</div>
+				<button type='button' class='btn-outline full' id='grid-preview-button'>
+					<svg viewBox='0 0 24 24' aria-hidden='true'><rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/></svg>
+					<span>Preview tile grid</span>
+				</button>
 
-			<div class='center-align'>
-				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='grid-preview-button'>Preview Grid</a>
-			</div>
-
-		</div>
-
-		<div class='step-number'>
-			4
-		</div>
-		<div class="step-title">
-			<a href='javascript:void(0)' id='more-options-toggle'>More Options (+)</a>
-		</div>
-
-		<div style='display:none;' id='more-options' class='sidebar-section row'>
-
-			<div class="input-field col s12">
-				<select id="output-scale" type="text">
-					<option value="1">1x</option>
-					<option value="2">2x</option>
-				</select>
-				<label for="output-scale">Output scale</label>
-			</div>
-
-			<div class="input-field col s12">
-				<input id="output-directory-box" type="text" value="{timestamp}">
-				<label for="output-directory-box">Output directory</label>
-			</div>
-
-			<div class="input-field col s12">
-				<select id="output-type" type="text">
-					<option value="directory">Directory</option>
-					<option value="mbtiles">Mbtiles</option>
-					<option value="repo">Repo</option>
-				</select>
-				<label for="output-type">Output type</label>
-			</div>
-
-			<div class="input-field col s12">
-				<input id="output-file-box" type="text" value="{z}/{x}/{y}.png">
-				<label for="output-file-box">Output file</label>
-			</div>
-
-			<div class="input-field col s12">
-				<input id="parallel-threads-box" type="text" value="16">
-				<label for="parallel-threads-box">Parallel downloads</label>
-			</div>
-		</div>
-
-		<div class="sidebar-section" id="stitch-option">
-			<label>
-				<input type="checkbox" id="stitch-checkbox" />
-				<span>Stitch tiles into image after download</span>
-			</label>
-		</div>
-
-		<button class='waves-effect waves-light z-depth-0 btn-large cyan darken-2 bottom-button' id='download-button'>Download</button>
-
-	</div>
-
-	<div class='sidebar' id='download-sidebar' style="display: none;">
-
-		<div class='brand-header'>
-			<a class='brand-company' href='https://www.artacyber.com' target='_blank' rel='noopener'><img src='brand/icon-primary.svg' alt='' width='20' height='20'/><span>Arta Cyber Inc.</span></a>
-			<div class='brand-app-name'>Arta Map Downloader</div>
-			<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div>
-		</div>
-
-		<div class='step-number'>
-			5
-		</div>
-		<div class="step-title" id="download-phase-title">
-			Downloading tiles
-		</div>
-		<div class="hints sidebar-section" id="download-phase-hint">
-			Please wait...
-		</div>
-
-		<div class="sidebar-section">
-			<div id='progress-radial' class=''>
-
-			</div>
-
-			<p id='progress-subtitle' class=''>
-
-			</p>
-
-			<p class='tile-strip '>
-			</p>
-
-		</div>
-
-		<textarea id='log-view' class="sidebar-section"></textarea>
-
-		<button class='waves-effect waves-light z-depth-0 btn-large red lighten-5 bottom-button' id='stop-button'>Stop</button>
-
-	</div>
-
-	<div class='sidebar' id='resume-sidebar' style="display: none;">
-
-		<div class='brand-header'>
-			<a class='brand-company' href='https://www.artacyber.com' target='_blank' rel='noopener'><img src='brand/icon-primary.svg' alt='' width='20' height='20'/><span>Arta Cyber Inc.</span></a>
-			<div class='brand-app-name'>Arta Map Downloader</div>
-			<div class='brand-links'><a href='#about-modal' class='modal-trigger'>About</a> &middot; <a href='#contact-modal' class='modal-trigger'>Contact</a></div>
-		</div>
-
-		<div class='step-number'>
-			R
-		</div>
-		<div class="step-title">
-			Resume a download
-		</div>
-
-		<div class='sidebar-section'>
-			<div class='hints'>Folders in <span id='output-root'></span></div>
-			<div class='collection' id='dataset-list'></div>
-
-			<form id='open-path-form' class='row'>
-				<div class="input-field col s12">
-					<input id="open-path-box" type="text" placeholder="C:\maps\my-tiles">
-					<label for="open-path-box" class="active">Or type a folder / .mbtiles path</label>
-				</div>
-				<div class="col s12 right-align">
-					<button class='waves-effect waves-light btn-small blue-grey lighten-1 z-depth-0' type='submit' id='open-path-button'>Open</button>
-				</div>
-			</form>
-			<label>
-				<input type="checkbox" id="verify-checkbox" />
-				<span>Check tile files for truncation (slower)</span>
-			</label>
-		</div>
-
-		<div class='sidebar-section hints' id='dataset-loading' style='display:none;'>Scanning folder...</div>
-
-		<div class='sidebar-section' id='dataset-panel' style='display:none;'>
-			<div class='dataset-path' id='dataset-path'></div>
-			<div class='hints dataset-notes' id='dataset-notes'></div>
-
-			<div class="row">
-				<div class="input-field col s10">
-					<input id="resume-source-box" type="text" value='https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'>
-					<label for="resume-source-box" class="active source-label"><span id='resume-source-name'>Map Tile Source</span></label>
-				</div>
-				<div class="input-field col s2">
-					<a class='waves-effect waves-light btn-small blue-grey lighten-2 z-depth-0 dropdown-trigger' id='resume-source-select' href='#' data-target='resume-sources'>⯆</a>
-					<ul id='resume-sources' class='dropdown-content source-list' data-input='#resume-source-box' data-label='#resume-source-name'>
-					</ul>
+				<div class='stats-card'>
+					<div class='stat'>
+						<svg viewBox='0 0 24 24' aria-hidden='true'><path d='m12 3 9 5-9 5-9-5 9-5zM3 13l9 5 9-5'/></svg>
+						<div><div class='stat-label'>Tiles</div><div class='stat-value' id='stat-tiles'>&ndash;</div></div>
+					</div>
+					<div class='stat'>
+						<svg viewBox='0 0 24 24' aria-hidden='true'><ellipse cx='12' cy='5' rx='8' ry='3'/><path d='M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3'/></svg>
+						<div><div class='stat-label'>Estimated size</div><div class='stat-value' id='stat-size'>&ndash;</div></div>
+					</div>
+					<div class='stat-note' id='stat-note'>Rough estimate: tiles &times; about 15 KB, the average tile of a 71,000-tile imagery download (4&times; at 2&times; scale). Real size depends on the source.</div>
 				</div>
 			</div>
 
-			<div class="row">
-				<div class="input-field col s4">
-					<input id="resume-zoom-from-box" type="text" value='0'/>
-					<label for="resume-zoom-from-box" class="active">From zoom</label>
-				</div>
-				<div class="input-field col s4">
-					<input id="resume-zoom-to-box" type="text" value='0'/>
-					<label for="resume-zoom-to-box" class="active">To zoom</label>
-				</div>
-				<div class="input-field col s4">
-					<input id="resume-threads-box" type="text" value='16'/>
-					<label for="resume-threads-box" class="active">Parallel:</label>
+			<div class='view-footer'>
+				<button type='button' class='btn-primary full' id='download-button'>
+					<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 3v12M7 10l5 5 5-5M4 20h16'/></svg>
+					<span>Download maps</span>
+				</button>
+				<div class='footer-links'>
+					<a href='#about-modal' class='modal-trigger help-link'><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01'/></svg><span>Help &amp; about</span></a>
 				</div>
 			</div>
+		</section>
 
-			<div class='hints'>Scale <span id='resume-scale'>1x</span>. The region is the rectangle on the map (<a href='javascript:void(0)' id='fit-region-button'>show it</a>): drag its corners or edges to resize it, or the centre dot to move it. The counts and coverage follow.</div>
-			<div class='hints region-bounds' id='region-bounds'></div>
+		<!-- ----- download in progress ----- -->
+		<section class='view' id='download-sidebar' style='display: none;'>
+			<div class='view-body'>
+				<div class='step-head'><span class='step-num'>
+					<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M12 3v12M7 10l5 5 5-5M4 20h16'/></svg>
+				</span><h2 id='download-phase-title'>Downloading tiles</h2></div>
 
-			<div class='missing-summary' id='missing-summary'></div>
+				<div class='progress-block'>
+					<svg class='progress-ring' viewBox='0 0 120 120' aria-hidden='true'>
+						<circle class='ring-track' cx='60' cy='60' r='52'/>
+						<circle class='ring-value' id='progress-ring-value' cx='60' cy='60' r='52'/>
+					</svg>
+					<div class='progress-text'><span id='progress-percent'>0</span><span class='unit'>%</span></div>
+				</div>
+				<p id='progress-subtitle' class='progress-subtitle'></p>
+				<div class='hint centred' id='download-phase-hint'>Please wait...</div>
 
-			<table class='zoom-table' id='zoom-table'>
-				<thead><tr><th>Zoom</th><th>Have</th><th>Missing</th><th>Total</th></tr></thead>
-				<tbody></tbody>
-			</table>
+				<div class='tile-strip'></div>
 
-			<div class='overlay-options'>
-				<label>
-					<input type="checkbox" id="show-coverage-checkbox" checked />
-					<span>Coverage (green have, red missing) at</span>
+				<label class='log-label' for='log-view'>Log</label>
+				<textarea id='log-view' class='browser-default' readonly></textarea>
+			</div>
+			<div class='view-footer'>
+				<button type='button' class='btn-danger full' id='stop-button'>Stop</button>
+			</div>
+		</section>
+
+		<!-- ----- resume / open an existing folder ----- -->
+		<section class='view' id='resume-sidebar' style='display: none;'>
+			<div class='view-body'>
+				<div class='step-head'>
+					<a href='javascript:void(0)' class='back-link' id='resume-back' title='Back' aria-label='Back'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='M15 6l-6 6 6 6'/></svg></a>
+					<h2>Resume a download</h2>
+				</div>
+
+				<div class='hint'>Folders in <span id='output-root'></span></div>
+				<div class='dataset-list' id='dataset-list'></div>
+
+				<form id='open-path-form' class='path-form'>
+					<label for='open-path-box'>Or type a folder / .mbtiles path</label>
+					<div class='inline-row'>
+						<input id='open-path-box' class='browser-default' type='text' placeholder='C:\maps\my-tiles'/>
+						<button type='submit' class='btn-outline' id='open-path-button'>Open</button>
+					</div>
+				</form>
+				<label class='check'>
+					<input type='checkbox' id='verify-checkbox' />
+					<span>Check tile files for truncation (slower)</span>
 				</label>
-				<select id='coverage-zoom' class='browser-default'></select>
-				<br/>
-				<label>
-					<input type="checkbox" id="show-imagery-checkbox" checked />
-					<span>Show downloaded tiles</span>
-				</label>
+
+				<div class='hint' id='dataset-loading' style='display:none;'>Scanning folder...</div>
+
+				<div id='dataset-panel' style='display:none;'>
+					<div class='dataset-path' id='dataset-path'></div>
+					<div class='hint dataset-notes' id='dataset-notes'></div>
+
+					<div class='field'>
+						<div class='field-label'><label for='resume-source-select'>Map source</label><a href='javascript:void(0)' class='field-link source-url-toggle' data-target='#resume-source-url-row'>Custom URL</a></div>
+						<div class='select-wrap with-icon'>
+							<svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18'/></svg>
+							<select id='resume-source-select' class='browser-default source-select' data-input='#resume-source-box' data-url-row='#resume-source-url-row'></select>
+						</div>
+						<div class='url-row' id='resume-source-url-row'>
+							<input id='resume-source-box' class='browser-default' type='text' aria-label='Tile URL for this folder' value='https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'/>
+						</div>
+					</div>
+
+					<div class='field-triple'>
+						<div class='field'>
+							<label for='resume-zoom-from-box'>From zoom</label>
+							<div class='select-wrap'><select id='resume-zoom-from-box' class='browser-default zoom-select' data-default='0'></select></div>
+						</div>
+						<div class='field'>
+							<label for='resume-zoom-to-box'>To zoom</label>
+							<div class='select-wrap'><select id='resume-zoom-to-box' class='browser-default zoom-select' data-default='0'></select></div>
+						</div>
+						<div class='field'>
+							<label for='resume-threads-box'>Parallel</label>
+							<input id='resume-threads-box' class='browser-default' type='number' min='1' max='64' value='16'/>
+						</div>
+					</div>
+
+					<div class='hint'>Scale <span id='resume-scale'>1x</span>. The region is the rectangle on the map (<a href='javascript:void(0)' id='fit-region-button'>show it</a>): drag its corners or edges to resize it, or the centre dot to move it. The counts and coverage follow.</div>
+					<div class='hint region-bounds' id='region-bounds'></div>
+
+					<div class='missing-summary' id='missing-summary'></div>
+
+					<table class='zoom-table' id='zoom-table'>
+						<thead><tr><th>Zoom</th><th>Have</th><th>Missing</th><th>Total</th></tr></thead>
+						<tbody></tbody>
+					</table>
+
+					<div class='overlay-options'>
+						<label class='check'>
+							<input type='checkbox' id='show-coverage-checkbox' checked />
+							<span>Coverage (green have, red missing) at</span>
+						</label>
+						<div class='select-wrap small'><select id='coverage-zoom' class='browser-default'></select></div>
+						<label class='check'>
+							<input type='checkbox' id='show-imagery-checkbox' checked />
+							<span>Show downloaded tiles</span>
+						</label>
+					</div>
+				</div>
 			</div>
-
-			<div class='resume-actions'>
-				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='retry-failed-button' style='display:none;'>Retry failed</a>
+			<div class='view-footer'>
+				<button type='button' class='btn-primary full' id='resume-button'>Resume</button>
+				<div class='footer-row'>
+					<button type='button' class='btn-outline' id='retry-failed-button' style='display:none;'>Retry failed</button>
+					<button type='button' class='btn-text' id='resume-close-button'>Close</button>
+					<a href='#about-modal' class='modal-trigger help-link'><svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='9'/><path d='M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01'/></svg><span>Help &amp; about</span></a>
+				</div>
 			</div>
-		</div>
+		</section>
+	</aside>
 
-		<div class='resume-buttons'>
-			<button class='waves-effect waves-light z-depth-0 btn cyan darken-2' id='resume-button'>Resume</button>
-			<button class='waves-effect waves-light z-depth-0 btn red lighten-5 black-text' id='resume-close-button'>Close</button>
-		</div>
-
-	</div>
-
+	<!-- ===== About and Contact (Materialize modals) ===== -->
 	<div id='about-modal' class='modal info-modal'>
 		<div class='modal-content'>
 			<h5>Arta Map Downloader <span class='version-tag'>version <span class='app-version'>1.0.0</span></span></h5>
@@ -324,6 +329,7 @@
 			</ul>
 			<p class='credit-text'>Arta Map Downloader is based on <a href='https://github.com/AliFlux/MapTilesDownloader' target='_blank' rel='noopener'>Map Tiles Downloader</a> by Ali Ashraf (MIT licence). It was enhanced, bug-fixed and extended with new features by Arta Cyber Inc.</p>
 			<p class='credit-text'>License: free for personal, non-commercial use; selling, reselling, rebranding and commercial use need written permission from Arta Cyber Inc. See the LICENSE file included with the software.</p>
+			<p class='credit-text'>Privacy: location search sends the text you type to OpenStreetMap Nominatim, and map tiles are loaded from the providers you choose. The app itself sends nothing to Arta Cyber Inc.</p>
 			<div class='about-company'>
 				<img src='brand/icon-primary.svg' alt='' width='48' height='48'/>
 				<div>
@@ -353,7 +359,7 @@
 				<tr><td>Contact page</td><td><a href='https://www.artacyber.com/contact' target='_blank' rel='noopener'>www.artacyber.com/contact</a></td></tr>
 				<tr><td>This app</td><td>Report an issue or request a feature: <a href='mailto:info@artacyber.com' target='_blank' rel='noopener'>info@artacyber.com</a></td></tr>
 			</table>
-			<p class='hints contact-note'>These links open in your browser or mail app. Arta Map Downloader itself sends nothing to Arta Cyber Inc.</p>
+			<p class='hints contact-note'>These links open in your browser or mail app. Location search sends the text you type to OpenStreetMap Nominatim and map tiles come from the providers you choose; Arta Map Downloader itself sends nothing to Arta Cyber Inc.</p>
 		</div>
 		<div class='modal-footer'>
 			<a href='javascript:void(0)' class='modal-close waves-effect btn-flat'>Close</a>
